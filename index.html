@@ -66,12 +66,12 @@
   nav button span{font-size:22px;filter:grayscale(1);opacity:.7}
   nav button.on{color:var(--accent)} nav button.on span{filter:none;opacity:1}
   .fab{position:fixed;right:18px;bottom:calc(92px + env(safe-area-inset-bottom));width:58px;height:58px;border-radius:50%;
-    background:var(--accent);color:var(--accent-txt);font-size:32px;font-weight:300;box-shadow:0 8px 24px rgba(182,243,107,.25);z-index:11}
+    background:var(--accent);color:var(--accent-txt);font-size:32px;font-weight:300;box-shadow:0 8px 24px rgba(182,243,107,.25);z-index:11;display:grid;place-items:center;padding:0}
   /* sheet */
   .overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:20;display:none;align-items:flex-end;justify-content:center}
   .overlay.open{display:flex}
   .sheet{background:var(--card);width:100%;max-width:560px;border-radius:24px 24px 0 0;padding:18px 16px calc(20px + env(safe-area-inset-bottom));
-    max-height:90vh;overflow:auto;animation:up .22s ease-out}
+    max-height:90vh;overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;animation:up .22s ease-out}
   @keyframes up{from{transform:translateY(60px)}to{transform:none}}
   .sheet h3{margin:4px 0 14px;font-size:20px}
   .handle{width:40px;height:5px;border-radius:9px;background:var(--line);margin:0 auto 10px}
@@ -103,7 +103,7 @@
   .rinde{color:var(--green);font-size:12px;margin-top:2px}
   /* botón X para cerrar las hojas */
   .sheet{position:relative}
-  .cerrar{position:absolute;top:14px;right:14px;width:34px;height:34px;border-radius:50%;background:var(--card2);color:var(--muted);font-size:16px;display:grid;place-items:center}
+  .cerrar{position:absolute;top:14px;right:14px;width:34px;height:34px;border-radius:50%;background:var(--card2);color:var(--muted);display:grid;place-items:center;padding:0}
   .sheet h3{padding-right:44px}
   /* gráfico de meses */
   .graf{display:flex;align-items:flex-end;gap:8px;height:190px;padding-top:22px}
@@ -118,12 +118,19 @@
   .leyenda{display:grid;gap:8px;margin-top:14px}
   .leyenda .row span:first-child{display:flex;align-items:center;gap:8px;min-width:0}
   .punto{width:10px;height:10px;border-radius:3px;flex:none}
+  /* elegir billetera */
+  .billes{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 6px;margin:0 -2px}
+  .bille-op{flex:none;width:96px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 6px;border-radius:14px;background:var(--card2);font-size:12px}
+  .bille-op span{max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+  .bille-op small{color:var(--muted);font-size:11px;white-space:nowrap}
+  .bille-op.on{outline:2px solid var(--accent)}
+  .conv{color:var(--muted);font-size:13px;margin-top:8px}
   .avatar{width:44px;height:44px;border-radius:14px;background:var(--card2);display:grid;place-items:center;font-size:24px}
 </style>
 </head>
 <body>
 <main id="main"></main>
-<button class="fab" id="fab" aria-label="Agregar">+</button>
+<button class="fab" id="fab" aria-label="Agregar"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
 <nav id="nav"></nav>
 <div class="overlay" id="overlay"><div class="sheet" id="sheet"></div></div>
 <div class="toast" id="toast"></div>
@@ -152,6 +159,7 @@ const CATEGORIAS = [
   {id:'otros',      nombre:'Otros',       emoji:'📦'},
 ];
 const CATEGORIAS_INGRESO = [
+  {id:'laburo',  nombre:'Laburo',   emoji:'💼'},
   {id:'sueldo',  nombre:'Sueldo',   emoji:'💰'},
   {id:'changa',  nombre:'Changa',   emoji:'🛠️'},
   {id:'regalo',  nombre:'Regalo',   emoji:'🎁'},
@@ -409,6 +417,36 @@ function rendimiento(saldo, tna){
   return { dia: saldo*tna/100/365, mes: saldo*tna/100/12 };
 }
 
+// ----- Elegir billetera con botones -----
+// Se lee lo elegido con $('#id').dataset.v
+function chipsBilleteras(idCont, elegida, opciones=state.billeteras){
+  return `<div class="billes" id="${idCont}" data-v="${elegida||''}">${opciones.map(b=>`
+    <button type="button" class="bille-op ${b.id===elegida?'on':''}" data-id="${b.id}" onclick="elegirBilletera('${idCont}','${b.id}')">
+      ${iconoBilletera(b)}<span>${esc(b.nombre)}</span><small>${plata(saldoBilletera(b),b.moneda)}</small>
+    </button>`).join('')}</div>`;
+}
+function elegirBilletera(idCont, id){
+  const c = $('#'+idCont); c.dataset.v = id;
+  c.querySelectorAll('.bille-op').forEach(x=>x.classList.toggle('on', x.dataset.id===id));
+  c.dispatchEvent(new Event('cambio'));
+}
+
+// ----- Conversión entre monedas con la cotización del día -----
+function desdePesos(pesos, moneda){
+  if(pesos==null) return null;
+  if(moneda==='ARS') return pesos;
+  if(moneda==='USDT') return state.usdt.valor ? pesos/state.usdt.valor : null;
+  return state.dolar.valor ? pesos/state.dolar.valor : null;
+}
+function convertir(monto, de, a){ return de===a ? monto : desdePesos(aPesos(monto,de), a); }
+function nombreDolar(){ return TIPOS_DOLAR.find(t=>t.id===state.dolar.tipo)?.nombre || ''; }
+// "≈ $ 24.000" para mostrar al lado de montos en dólares
+function enPesosTxt(monto, moneda){
+  if(moneda==='ARS') return '';
+  const p = aPesos(monto, moneda);
+  return p==null ? '' : `≈ ${plata(Math.round(p))}`;
+}
+
 // ----- Mensualidades -----
 function iconoSuscripcion(s){
   const t = ' ' + String(s.nombre||'').toLowerCase() + ' ';
@@ -416,6 +454,13 @@ function iconoSuscripcion(s){
   return m ? badge(m) : `<div class="ico">${/gym|gimnasio/i.test(s.nombre)?'🏋️':'🔁'}</div>`;
 }
 function pagadaEsteMes(s){ return s.ultimoPago===mesActual(); }
+// Total de mensualidades pasado a pesos (si falta el dólar, muestra los dólares aparte)
+function mensualEnPesos(){
+  const ars = totalMensual('ARS'), usd = totalMensual('USD'), usdP = aPesos(usd,'USD');
+  if(!usd) return plata(ars);
+  if(usdP==null) return [ars?plata(ars):'', plata(usd,'USD')].filter(Boolean).join(' + ');
+  return `${plata(Math.round(ars+usdP))} <span class="s">(incluye ${plata(usd,'USD')})</span>`;
+}
 function totalMensual(moneda){ return state.suscripciones.filter(s=>s.moneda===moneda).reduce((a,s)=>a+s.monto,0); }
 function nombreExchange(){ return EXCHANGES_USDT.find(e=>e.id===state.usdt.exchange)?.nombre || state.usdt.exchange; }
 function iconoMoneda(m){ return m==='USD'?'💵' : m==='USDT'?'🪙' : '👛'; }
@@ -428,7 +473,7 @@ function hayUSDT(){ return state.billeteras.some(b=>b.moneda==='USDT') || state.
 function render(){
   if(!state.usuario){ renderBienvenida(); return; }
   $('#nav').style.display='flex';
-  $('#fab').style.display = (vista==='ajustes') ? 'none' : 'block';
+  $('#fab').style.display = (vista==='ajustes') ? 'none' : 'grid';
   renderNav();
   const vistas = {inicio:vInicio, gastos:vGastos, cuotas:vCuotas, inversiones:vInversiones, ajustes:vAjustes};
   $('#main').innerHTML = vistas[vista]();
@@ -492,10 +537,14 @@ function vInicio(){
   const cuotasMesARS = activas.filter(d=>d.moneda==='ARS').reduce((a,d)=>a+d.montoCuota,0) + totalMensual('ARS');
   const cuotasMesUSD = activas.filter(d=>d.moneda==='USD').reduce((a,d)=>a+d.montoCuota,0) + totalMensual('USD');
 
-  // Inversiones
-  const invARS = state.inversiones.filter(i=>i.moneda==='ARS').reduce((a,i)=>a+i.valorActual,0);
-  const invUSD = state.inversiones.filter(i=>i.moneda==='USD').reduce((a,i)=>a+i.valorActual,0);
-  const invUSDT = state.inversiones.filter(i=>i.moneda==='USDT').reduce((a,i)=>a+i.valorActual,0);
+  const cuotasMesUSDPesos = aPesos(cuotasMesUSD,'USD');
+
+  // Total: todo lo que tenés en billeteras y efectivo, pasado a pesos
+  let totalPesos = 0; const sinCotizar = [];
+  for(const b of state.billeteras){
+    const s = saldoBilletera(b), p = aPesos(s, b.moneda);
+    if(p==null){ if(s) sinCotizar.push(plata(s,b.moneda)); } else totalPesos += p;
+  }
 
   // Gastos por categoría (en pesos)
   const porCat = {};
@@ -536,14 +585,14 @@ function vInicio(){
     <div class="grid2">
       <div class="card" onclick="irA('cuotas')">
         <div class="label">💳 A pagar este mes</div>
-        <div class="mid">${plata(cuotasMesARS)}</div>
-        ${cuotasMesUSD?`<div class="s">+ ${plata(cuotasMesUSD,'USD')}</div>`:''}
+        ${cuotasMesUSD && cuotasMesUSDPesos!=null
+          ? `<div class="mid">${plata(Math.round(cuotasMesARS+cuotasMesUSDPesos))}</div><div class="s">incluye ${plata(cuotasMesUSD,'USD')}</div>`
+          : `<div class="mid">${plata(cuotasMesARS)}</div>${cuotasMesUSD?`<div class="s">+ ${plata(cuotasMesUSD,'USD')}</div>`:''}`}
       </div>
-      <div class="card" onclick="irA('inversiones')">
-        <div class="label">📈 Invertido hoy</div>
-        <div class="mid">${plata(invARS)}</div>
-        ${invUSD?`<div class="s">+ ${plata(invUSD,'USD')}</div>`:''}
-        ${invUSDT?`<div class="s">+ ${plata(invUSDT,'USDT')}</div>`:''}
+      <div class="card">
+        <div class="label">💰 Total</div>
+        <div class="mid ${totalPesos<0?'neg':''}">${plata(Math.round(totalPesos))}</div>
+        <div class="s">${sinCotizar.length ? '+ '+sinCotizar.join(' + ') : `en ${state.billeteras.length} billetera${state.billeteras.length===1?'':'s'}`}</div>
       </div>
     </div>
 
@@ -571,7 +620,7 @@ function vInicio(){
           ${p.ico}
           <div class="grow"><div class="t">${esc(p.nombre)}</div>
             <div class="s">${p.dia?`Día ${p.dia} · `:''}${p.detalle}</div></div>
-          <div class="amt">${plata(p.monto,p.moneda)}</div>
+          <div style="text-align:right"><div class="amt">${plata(p.monto,p.moneda)}</div>${enPesosTxt(p.monto,p.moneda)?`<div class="s">${enPesosTxt(p.monto,p.moneda)}</div>`:''}</div>
         </div>`).join('')}
     </div>`:''}
 
@@ -738,7 +787,7 @@ function vCuotas(){
       <div class="label">${filtroDeuda==='debo'?'Te falta pagar':'Te falta cobrar'}</div>
       <div class="big">${plata(restaARS)}</div>
       ${restaUSD?`<div class="s">+ ${plata(restaUSD,'USD')}</div>`:''}
-      ${filtroDeuda==='debo' && state.suscripciones.length ? `<div class="s" style="margin-top:8px">+ mensualidades: <b style="color:var(--txt)">${[['ARS',totalMensual('ARS')],['USD',totalMensual('USD')]].filter(x=>x[1]).map(([m,v])=>plata(v,m)).join(' + ')}</b> por mes</div>`:''}
+      ${filtroDeuda==='debo' && state.suscripciones.length ? `<div class="s" style="margin-top:8px">+ mensualidades: <b style="color:var(--txt)">${mensualEnPesos()}</b> por mes</div>`:''}
     </div>
     ${filtroDeuda==='debo' && state.suscripciones.length ? `
     <h2>🔁 Mensualidades</h2>
@@ -747,7 +796,7 @@ function vCuotas(){
         return `<div class="item">
           <div onclick="formSuscripcion('${su.id}')">${iconoSuscripcion(su)}</div>
           <div class="grow" onclick="formSuscripcion('${su.id}')"><div class="t">${esc(su.nombre)}</div>
-            <div class="s">${plata(su.monto,su.moneda)} por mes${su.dia?` · día ${su.dia}`:''}${b?` · ${esc(b.nombre)}`:''}</div></div>
+            <div class="s">${plata(su.monto,su.moneda)} por mes${su.moneda!=='ARS'&&enPesosTxt(su.monto,su.moneda)?` (${enPesosTxt(su.monto,su.moneda)})`:''}${su.dia?` · día ${su.dia}`:''}${b?` · ${esc(b.nombre)}`:''}</div></div>
           ${pagadaEsteMes(su) ? `<span class="pill">✅ Pagado</span>` : `<button class="btn sm" onclick="pagarMensualidad('${su.id}')">Pagar</button>`}
         </div>`;}).join('')}
     </div>
@@ -756,64 +805,66 @@ function vCuotas(){
     ${terminadas.length?`<h2>Terminadas</h2>${terminadas.map(tarjeta).join('')}`:''}`;
 }
 
+// Hoja de pago compartida por cuotas y mensualidades.
+// Siempre registra el movimiento (así se descuenta de la billetera) con la fecha de hoy.
+function hojaPago({titulo, detalle, monto, moneda, preferida, pregunta, alConfirmar}){
+  // Primero las billeteras de la misma moneda
+  const billes = [...state.billeteras].sort((a,b)=>(b.moneda===moneda)-(a.moneda===moneda));
+  const elegida = billes.find(b=>b.id===preferida && b.moneda===moneda) || billes[0];
+  abrirSheet(`
+    <h3>${titulo}</h3>
+    <p class="sub">${detalle} · ${plata(monto,moneda)}${moneda!=='ARS'&&aPesos(monto,moneda)!=null?` (${enPesosTxt(monto,moneda)})`:''}</p>
+    <label>${pregunta}</label>
+    ${chipsBilleteras('pagoBille', elegida?.id, billes)}
+    <div class="conv" id="pagoConv"></div>
+    <div class="actions"><button class="btn" id="pagoOk">Confirmar</button></div>`);
+  const montoEn = id => { const b=billetera(id); return b ? convertir(monto, moneda, b.moneda) : null; };
+  const mostrar = () => {
+    const b = billetera($('#pagoBille').dataset.v); if(!b) return;
+    const m = montoEn(b.id);
+    $('#pagoConv').innerHTML = b.moneda===moneda ? `Se descuenta ${plata(monto,moneda)} de ${esc(b.nombre)}.`
+      : m==null ? `⚠️ Falta la cotización para pasar a ${nombreMoneda(b.moneda).toLowerCase()}. Actualizala en Ajustes.`
+      : `Se descuentan <b style="color:var(--txt)">${plata(Math.round(m*100)/100,b.moneda)}</b> de ${esc(b.nombre)} (dólar ${nombreDolar()} de hoy).`;
+  };
+  $('#pagoBille').addEventListener('cambio', mostrar); mostrar();
+  $('#pagoOk').onclick = () => {
+    const b = billetera($('#pagoBille').dataset.v); if(!b) return toast('Elegí una billetera');
+    const m = montoEn(b.id); if(m==null) return toast('Falta la cotización del dólar');
+    alConfirmar(b, Math.round(m*100)/100);
+  };
+}
+
 function pagarCuota(id){
   const d = state.deudas.find(x=>x.id===id); if(!d) return;
-  const billes = state.billeteras.filter(b=>b.moneda===d.moneda);
-  abrirSheet(`
-    <h3>${d.direccion==='debo'?'Pagar cuota':'Registrar cobro'} ${d.cuotasPagadas+1}/${d.cuotasTotales}</h3>
-    <p class="sub">${esc(d.descripcion)} · ${plata(d.montoCuota,d.moneda)}</p>
-    <label>¿${d.direccion==='debo'?'De qué billetera sale':'A qué billetera entra'}?</label>
-    <select id="pcBille">
-      <option value="">No registrar movimiento</option>
-      ${billes.map(b=>`<option value="${b.id}">${esc(b.nombre)}</option>`).join('')}
-    </select>
-    <div class="actions">
-      <button class="btn" onclick="confirmarPago('${id}')">Confirmar</button>
-      <button class="btn sec" onclick="cerrarSheet()">Cancelar</button>
-    </div>`);
-  if(billes[0]) $('#pcBille').value = billes[0].id;
-}
-function confirmarPago(id){
-  const d = state.deudas.find(x=>x.id===id);
-  const bId = $('#pcBille').value;
-  d.cuotasPagadas = Math.min(d.cuotasTotales, d.cuotasPagadas+1);
-  if(bId){
-    state.movimientos.push({
-      id:uid(), tipo: d.direccion==='debo'?'gasto':'ingreso', monto:d.montoCuota, billeteraId:bId,
-      categoria: d.direccion==='debo'?'cuotas':'otros_i', fecha:hoyISO(),
-      nota:`${d.descripcion} (${d.cuotasPagadas}/${d.cuotasTotales})`
-    });
-  }
-  save(); cerrarSheet(); render();
-  toast(d.cuotasPagadas>=d.cuotasTotales ? '🎉 ¡Terminaste de pagarla!' : '✅ Cuota registrada');
+  const debo = d.direccion==='debo';
+  hojaPago({
+    titulo: `${debo?'Pagar cuota':'Registrar cobro'} ${d.cuotasPagadas+1}/${d.cuotasTotales}`,
+    detalle: esc(d.descripcion), monto: d.montoCuota, moneda: d.moneda,
+    pregunta: debo ? '¿De qué billetera sale?' : '¿A qué billetera entra?',
+    alConfirmar: (b, monto) => {
+      d.cuotasPagadas = Math.min(d.cuotasTotales, d.cuotasPagadas+1);
+      const conv = b.moneda!==d.moneda ? ` · ${plata(d.montoCuota,d.moneda)}` : '';
+      state.movimientos.push({id:uid(), tipo: debo?'gasto':'ingreso', monto, billeteraId:b.id,
+        categoria: debo?'cuotas':'otros_i', fecha:hoyISO(), nota:`${d.descripcion} (${d.cuotasPagadas}/${d.cuotasTotales})${conv}`});
+      save(); cerrarSheet(); render();
+      toast(d.cuotasPagadas>=d.cuotasTotales ? '🎉 ¡Terminaste de pagarla!' : '✅ Cuota registrada');
+    }
+  });
 }
 
 function pagarMensualidad(id){
   const su = state.suscripciones.find(x=>x.id===id); if(!su) return;
-  const billes = state.billeteras.filter(b=>b.moneda===su.moneda);
-  abrirSheet(`
-    <h3>Pagar ${esc(su.nombre)}</h3>
-    <p class="sub">${nombreMes(mesActual())} · ${plata(su.monto,su.moneda)}</p>
-    <label>¿De qué billetera sale?</label>
-    <select id="pmBille">
-      <option value="">No registrar movimiento</option>
-      ${billes.map(b=>`<option value="${b.id}">${esc(b.nombre)}</option>`).join('')}
-    </select>
-    <div class="actions">
-      <button class="btn" onclick="confirmarMensualidad('${id}')">Confirmar</button>
-    </div>`);
-  const elegida = billes.find(b=>b.id===su.billeteraId) || billes[0];
-  if(elegida) $('#pmBille').value = elegida.id;
-}
-function confirmarMensualidad(id){
-  const su = state.suscripciones.find(x=>x.id===id);
-  const bId = $('#pmBille').value;
-  su.ultimoPago = mesActual();
-  if(bId){
-    state.movimientos.push({id:uid(), tipo:'gasto', monto:su.monto, billeteraId:bId, categoria:'subs', fecha:hoyISO(),
-      nota:`${su.nombre} (${nombreMes(mesActual())})`});
-  }
-  save(); cerrarSheet(); render(); toast('✅ Mensualidad pagada');
+  hojaPago({
+    titulo: `Pagar ${esc(su.nombre)}`, detalle: nombreMes(mesActual()), monto: su.monto, moneda: su.moneda,
+    preferida: su.billeteraId, pregunta: '¿De qué billetera sale?',
+    alConfirmar: (b, monto) => {
+      su.ultimoPago = mesActual();
+      const conv = b.moneda!==su.moneda ? ` · ${plata(su.monto,su.moneda)}` : '';
+      state.movimientos.push({id:uid(), tipo:'gasto', monto, billeteraId:b.id, categoria:'subs', fecha:hoyISO(),
+        nota:`${su.nombre} (${nombreMes(mesActual())})${conv}`});
+      save(); cerrarSheet(); render(); toast('✅ Mensualidad pagada');
+    }
+  });
 }
 
 // ----- Inversiones -----
@@ -949,8 +1000,22 @@ function borrarTodo(){
 // ============================================================
 //  FORMULARIOS (hoja que sube desde abajo)
 // ============================================================
-function abrirSheet(html){ $('#sheet').innerHTML = '<div class="handle"></div><button class="cerrar" onclick="cerrarSheet()" aria-label="Cerrar">✕</button>' + html; $('#overlay').classList.add('open'); $('#fab').style.visibility='hidden'; }
-function cerrarSheet(){ $('#overlay').classList.remove('open'); $('#fab').style.visibility=''; }
+// Mientras la hoja está abierta, la pantalla de atrás queda "congelada" para que no se mueva al deslizar
+function bloquearFondo(){
+  if(document.body.dataset.bloqueado) return;
+  const y = window.scrollY;
+  document.body.dataset.bloqueado = y;
+  Object.assign(document.body.style, {position:'fixed', top:`-${y}px`, left:'0', right:'0'});
+}
+function desbloquearFondo(){
+  if(!document.body.dataset.bloqueado) return;
+  const y = Number(document.body.dataset.bloqueado);
+  delete document.body.dataset.bloqueado;
+  Object.assign(document.body.style, {position:'', top:'', left:'', right:''});
+  window.scrollTo(0, y);
+}
+function abrirSheet(html){ bloquearFondo();  $('#sheet').innerHTML = '<div class="handle"></div><button class="cerrar" onclick="cerrarSheet()" aria-label="Cerrar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>' + html; $('#overlay').classList.add('open'); $('#fab').style.visibility='hidden'; }
+function cerrarSheet(){ desbloquearFondo(); $('#overlay').classList.remove('open'); $('#fab').style.visibility=''; }
 $('#overlay').addEventListener('click', e=>{ if(e.target.id==='overlay') cerrarSheet(); });
 
 // Botón +: depende de la pantalla
@@ -966,11 +1031,12 @@ function formMovimiento(id){
   const m = id ? state.movimientos.find(x=>x.id===id) : null;
   if(!state.billeteras.length){ toast('Primero creá una billetera'); formBilletera(); return; }
   tipoMov = m ? m.tipo : 'gasto';
-  catMov = m ? m.categoria : (tipoMov==='gasto'?'comida':'sueldo');
+  catMov = m ? m.categoria : (tipoMov==='gasto'?'comida':'laburo');
   const pintar = () => {
     const cats = tipoMov==='gasto'?CATEGORIAS:CATEGORIAS_INGRESO;
     $('#mCats').innerHTML = cats.map(c=>`<button class="chip ${c.id===catMov?'on':''}" onclick="catMov='${c.id}';this.parentNode.querySelectorAll('.chip').forEach(x=>x.classList.remove('on'));this.classList.add('on')">${c.emoji} ${c.nombre}</button>`).join('');
     document.querySelectorAll('#mTipo button').forEach(b=>b.classList.toggle('on', b.dataset.t===tipoMov));
+    $('#mBilleLbl').textContent = tipoMov==='gasto' ? '¿De qué billetera sale?' : '¿A qué billetera entra?';
   };
   abrirSheet(`
     <h3>${m?'Editar':'Nuevo'} movimiento</h3>
@@ -979,8 +1045,8 @@ function formMovimiento(id){
     </div>
     <label>Monto</label>
     <input id="mMonto" inputmode="decimal" placeholder="0" value="${m?m.monto:''}">
-    <label>Billetera</label>
-    <select id="mBille">${state.billeteras.map(b=>`<option value="${b.id}">${esc(b.nombre)} (${b.moneda})</option>`).join('')}</select>
+    <label id="mBilleLbl">Billetera</label>
+    ${chipsBilleteras('mBille', m ? m.billeteraId : state.billeteras[0].id)}
     <label>Categoría</label>
     <div class="chips" id="mCats"></div>
     <label>Nota (opcional)</label>
@@ -991,15 +1057,14 @@ function formMovimiento(id){
       <button class="btn" onclick="guardarMovimiento('${id||''}')">Guardar</button>
       ${m?`<button class="btn danger" onclick="borrar('movimientos','${id}')">Eliminar</button>`:''}
     </div>`);
-  if(m) $('#mBille').value = m.billeteraId;
-  document.querySelectorAll('#mTipo button').forEach(b=>b.onclick=()=>{ tipoMov=b.dataset.t; catMov = tipoMov==='gasto'?'comida':'sueldo'; pintar(); });
+  document.querySelectorAll('#mTipo button').forEach(b=>b.onclick=()=>{ tipoMov=b.dataset.t; catMov = tipoMov==='gasto'?'comida':'laburo'; pintar(); });
   pintar();
   if(!m) setTimeout(()=>$('#mMonto').focus(),250);
 }
 function guardarMovimiento(id){
   const monto = num($('#mMonto').value);
   if(monto<=0) return toast('Poné un monto');
-  const datos = {tipo:tipoMov, monto, billeteraId:$('#mBille').value, categoria:catMov, nota:$('#mNota').value.trim(), fecha:$('#mFecha').value||hoyISO()};
+  const datos = {tipo:tipoMov, monto, billeteraId:$('#mBille').dataset.v, categoria:catMov, nota:$('#mNota').value.trim(), fecha:$('#mFecha').value||hoyISO()};
   if(id){ Object.assign(state.movimientos.find(x=>x.id===id), datos); }
   else state.movimientos.push({id:uid(), ...datos});
   save(); cerrarSheet(); render(); toast(tipoMov==='gasto'?'💸 Gasto guardado':'💰 Ingreso guardado');
