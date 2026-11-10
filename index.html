@@ -91,6 +91,16 @@
   .toast{position:fixed;left:50%;top:calc(14px + env(safe-area-inset-top));transform:translateX(-50%);background:var(--card2);border:1px solid var(--line);
     padding:10px 16px;border-radius:99px;font-size:14px;z-index:30;opacity:0;transition:opacity .2s;pointer-events:none}
   .toast.show{opacity:1}
+  .ico.marca{font-weight:800;letter-spacing:-.5px;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display",sans-serif}
+  .marcas{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;max-height:220px;overflow:auto;padding:2px}
+  .marca-op{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 2px;border-radius:12px;background:var(--card2);font-size:11px;color:var(--muted)}
+  .marca-op span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+  .marca-op.on{outline:2px solid var(--accent);color:var(--txt)}
+  .mini-card{position:relative;width:56px;height:38px;border-radius:7px;flex:none;box-shadow:0 2px 8px rgba(0,0,0,.35);overflow:hidden}
+  .mc-banco{position:absolute;left:5px;top:3px;font-size:9px;font-weight:800}
+  .mc-chip{position:absolute;left:6px;top:16px;width:10px;height:8px;border-radius:2px;background:linear-gradient(135deg,#f6d77a,#c9a240)}
+  .mc-red{position:absolute;right:5px;bottom:3px;font-size:8px;font-weight:800;font-style:italic;text-transform:uppercase;opacity:.95}
+  .rinde{color:var(--green);font-size:12px;margin-top:2px}
   .avatar{width:44px;height:44px;border-radius:14px;background:var(--card2);display:grid;place-items:center;font-size:24px}
 </style>
 </head>
@@ -283,6 +293,89 @@ async function actualizarUSDT(forzar=false){
     if(forzar) toast('No pude traer el USDT: uso el último guardado');
   }
 }
+// ---------- Marcas (bancos y billeteras): color + iniciales, sin logos ----------
+// buscar: palabras que, si aparecen en el nombre, detectan la marca sola
+const MARCAS = [
+  {id:'mp',        nombre:'Mercado Pago', ini:'MP',   bg:'#00b1ea', fg:'#fff', buscar:['mercado pago','mercadopago','mp']},
+  {id:'lemon',     nombre:'Lemon',        ini:'L',    bg:'#00e676', fg:'#0b1f12', buscar:['lemon']},
+  {id:'uala',      nombre:'Ualá',         ini:'U',    bg:'#3e6bfd', fg:'#fff', buscar:['uala','ualá']},
+  {id:'naranjax',  nombre:'Naranja X',    ini:'NX',   bg:'#fe5000', fg:'#fff', buscar:['naranja']},
+  {id:'brubank',   nombre:'Brubank',      ini:'B',    bg:'#6c3cf0', fg:'#fff', buscar:['brubank']},
+  {id:'belo',      nombre:'Belo',         ini:'b',    bg:'#7b61ff', fg:'#fff', buscar:['belo']},
+  {id:'personal',  nombre:'Personal Pay', ini:'PP',   bg:'#00c3e3', fg:'#082430', buscar:['personal pay','personal']},
+  {id:'prex',      nombre:'Prex',         ini:'P',    bg:'#1d4ed8', fg:'#fff', buscar:['prex']},
+  {id:'cuentadni', nombre:'Cuenta DNI',   ini:'DNI',  bg:'#00a650', fg:'#fff', buscar:['cuenta dni','dni']},
+  {id:'modo',      nombre:'MODO',         ini:'M',    bg:'#00b6a1', fg:'#fff', buscar:['modo']},
+  {id:'binance',   nombre:'Binance',      ini:'BN',   bg:'#f0b90b', fg:'#1a1a1a', buscar:['binance']},
+  {id:'ripio',     nombre:'Ripio',        ini:'R',    bg:'#5b2ee8', fg:'#fff', buscar:['ripio']},
+  {id:'buenbit',   nombre:'Buenbit',      ini:'Bb',   bg:'#2a2fd6', fg:'#fff', buscar:['buenbit']},
+  {id:'fiwind',    nombre:'Fiwind',       ini:'F',    bg:'#0ea5e9', fg:'#fff', buscar:['fiwind']},
+  {id:'nacion',    nombre:'Banco Nación', ini:'BNA',  bg:'#005a9c', fg:'#fff', buscar:['nacion','nación','bna']},
+  {id:'galicia',   nombre:'Galicia',      ini:'G',    bg:'#ff6b00', fg:'#fff', buscar:['galicia']},
+  {id:'santander', nombre:'Santander',    ini:'S',    bg:'#ec0000', fg:'#fff', buscar:['santander']},
+  {id:'bbva',      nombre:'BBVA',         ini:'BBVA', bg:'#004481', fg:'#fff', buscar:['bbva','frances','francés']},
+  {id:'macro',     nombre:'Macro',        ini:'M',    bg:'#123b73', fg:'#fff', buscar:['macro']},
+  {id:'provincia', nombre:'Provincia',    ini:'BP',   bg:'#00843d', fg:'#fff', buscar:['provincia','bapro']},
+  {id:'icbc',      nombre:'ICBC',         ini:'ICBC', bg:'#c4161c', fg:'#fff', buscar:['icbc']},
+  {id:'hsbc',      nombre:'HSBC',         ini:'HSBC', bg:'#db0011', fg:'#fff', buscar:['hsbc']},
+  {id:'supervielle',nombre:'Supervielle', ini:'SV',   bg:'#d1003f', fg:'#fff', buscar:['supervielle']},
+  {id:'patagonia', nombre:'Patagonia',    ini:'BP',   bg:'#0a3d91', fg:'#fff', buscar:['patagonia']},
+  {id:'ciudad',    nombre:'Ciudad',       ini:'C',    bg:'#0094d9', fg:'#fff', buscar:['ciudad']},
+  {id:'credicoop', nombre:'Credicoop',    ini:'CC',   bg:'#00965e', fg:'#fff', buscar:['credicoop']},
+  {id:'cordoba',   nombre:'Bancor',       ini:'BC',   bg:'#00548c', fg:'#fff', buscar:['bancor','cordoba','córdoba']},
+];
+const REDES_TARJETA = ['Visa','Mastercard','Amex','Cabal','Naranja'];
+
+// Busca la marca: primero la elegida a mano, si no, por el nombre
+function marcaDe(id, texto){
+  if(id) { const m = MARCAS.find(x=>x.id===id); if(m) return m; }
+  const t = ' ' + String(texto||'').toLowerCase() + ' ';
+  return MARCAS.find(m => m.buscar.some(p => p.length<=3 ? t.includes(' '+p+' ') : t.includes(p))) || null;
+}
+// Ícono cuadrado con color de la marca; si no hay marca, emoji según moneda
+function iconoBilletera(b){
+  const m = marcaDe(b.marca, b.nombre);
+  if(m) return badge(m);
+  if(/efectivo|cash/i.test(b.nombre) && b.moneda==='ARS') return '<div class="ico">💵</div>';
+  return `<div class="ico">${iconoMoneda(b.moneda)}</div>`;
+}
+function badge(m, extra=''){
+  const fs = m.ini.length>=4?11 : m.ini.length===3?13 : 16;
+  return `<div class="ico marca" style="background:${m.bg};color:${m.fg};font-size:${fs}px;${extra}">${m.ini}</div>`;
+}
+// Mini tarjeta de crédito con el color del banco
+function miniTarjeta(d){
+  const m = marcaDe(d.marca, d.quien);
+  const bg = m ? m.bg : '#3a4150';
+  const fg = m ? m.fg : '#fff';
+  return `<div class="mini-card" style="background:linear-gradient(135deg, ${bg}, ${oscurecer(bg)});color:${fg}">
+    <span class="mc-banco">${m?m.ini:'💳'}</span><span class="mc-chip"></span><span class="mc-red">${esc(({Mastercard:'Master'})[d.red]||d.red||'')}</span></div>`;
+}
+function oscurecer(hex){
+  const n = parseInt(hex.slice(1),16);
+  const r=Math.round(((n>>16)&255)*.6), g=Math.round(((n>>8)&255)*.6), b=Math.round((n&255)*.6);
+  return '#' + [r,g,b].map(x=>x.toString(16).padStart(2,'0')).join('');
+}
+// Selector de marca para los formularios
+function selectorMarcas(idInput, elegida){
+  return `<div class="marcas" id="${idInput}">
+    <button type="button" class="marca-op ${!elegida?'on':''}" data-id=""><div class="ico">✨</div><span>Auto</span></button>
+    ${MARCAS.map(m=>`<button type="button" class="marca-op ${elegida===m.id?'on':''}" data-id="${m.id}">${badge(m)}<span>${m.nombre}</span></button>`).join('')}
+  </div>`;
+}
+function activarSelectorMarcas(idInput, alElegir){
+  document.querySelectorAll(`#${idInput} .marca-op`).forEach(btn=>btn.onclick=()=>{
+    document.querySelectorAll(`#${idInput} .marca-op`).forEach(x=>x.classList.remove('on'));
+    btn.classList.add('on'); alElegir(btn.dataset.id);
+  });
+}
+
+// ---------- Rendimiento (TNA) ----------
+function rendimiento(saldo, tna){
+  if(!tna || saldo<=0) return null;
+  return { dia: saldo*tna/100/365, mes: saldo*tna/100/12 };
+}
+
 function nombreExchange(){ return EXCHANGES_USDT.find(e=>e.id===state.usdt.exchange)?.nombre || state.usdt.exchange; }
 function iconoMoneda(m){ return m==='USD'?'💵' : m==='USDT'?'🪙' : '👛'; }
 function nombreMoneda(m){ return m==='USD'?'Dólares' : m==='USDT'?'USDT' : 'Pesos'; }
@@ -414,9 +507,11 @@ function vInicio(){
       ${state.billeteras.map(b=>{
         const s=saldoBilletera(b);
         const enPesos = b.moneda==='USDT' ? aPesos(s,'USDT') : null;
+        const r = rendimiento(s, b.tna);
         return `<div class="item" onclick="formBilletera('${b.id}')">
-          <div class="ico">${iconoMoneda(b.moneda)}</div>
-          <div class="grow"><div class="t">${esc(b.nombre)}</div><div class="s">${nombreMoneda(b.moneda)}</div></div>
+          ${iconoBilletera(b)}
+          <div class="grow"><div class="t">${esc(b.nombre)}</div><div class="s">${nombreMoneda(b.moneda)}${b.tna?` · ${String(b.tna).replace('.',',')}% TNA`:''}</div>
+            ${r?`<div class="rinde">📈 ≈ +${plata(r.dia,b.moneda)}/día · +${plata(r.mes,b.moneda)}/mes</div>`:''}</div>
           <div style="text-align:right"><div class="amt ${s<0?'neg':''}">${plata(s,b.moneda)}</div>
             ${enPesos!=null?`<div class="s">≈ ${plata(Math.round(enPesos))}</div>`:''}</div></div>`;
       }).join('') || `<div class="empty">Todavía no cargaste billeteras</div>`}
@@ -428,7 +523,7 @@ function vInicio(){
     <div class="card">
       ${proximos.map(d=>`
         <div class="item">
-          <div class="ico">${d.clase==='tarjeta'?'💳':'🤝'}</div>
+          ${d.clase==='tarjeta'?miniTarjeta(d):'<div class="ico">🤝</div>'}
           <div class="grow"><div class="t">${esc(d.descripcion)}</div>
             <div class="s">Día ${d.diaVencimiento} · cuota ${d.cuotasPagadas+1} de ${d.cuotasTotales}</div></div>
           <div class="amt">${plata(d.montoCuota,d.moneda)}</div>
@@ -502,8 +597,8 @@ function vCuotas(){
     return `<div class="card">
       <div class="row" onclick="formDeuda('${d.id}')">
         <div class="row" style="justify-content:flex-start;gap:12px;min-width:0">
-          <div class="ico">${d.clase==='tarjeta'?'💳':'🤝'}</div>
-          <div style="min-width:0"><div class="t">${esc(d.descripcion)}</div><div class="s">${esc(d.quien||'')}${d.diaVencimiento?` · vence el ${d.diaVencimiento}`:''}</div></div>
+          ${d.clase==='tarjeta'?miniTarjeta(d):'<div class="ico">🤝</div>'}
+          <div style="min-width:0"><div class="t">${esc(d.descripcion)}</div><div class="s">${[d.red, d.quien].filter(Boolean).map(esc).join(' · ')}${d.diaVencimiento?` · vence el ${d.diaVencimiento}`:''}</div></div>
         </div>
         <div class="amt">${plata(d.montoCuota,d.moneda)}</div>
       </div>
@@ -626,7 +721,7 @@ function vAjustes(){
 
     <h2>👛 Billeteras</h2>
     <div class="card" style="padding:4px 16px">
-      ${state.billeteras.map(b=>`<div class="item" onclick="formBilletera('${b.id}')"><div class="ico">${iconoMoneda(b.moneda)}</div><div class="grow"><div class="t">${esc(b.nombre)}</div><div class="s">${nombreMoneda(b.moneda)}</div></div><span class="s">›</span></div>`).join('')}
+      ${state.billeteras.map(b=>`<div class="item" onclick="formBilletera('${b.id}')">${iconoBilletera(b)}<div class="grow"><div class="t">${esc(b.nombre)}</div><div class="s">${nombreMoneda(b.moneda)}</div></div><span class="s">›</span></div>`).join('')}
       <div style="padding:10px 0"><button class="btn sec sm" onclick="formBilletera()">+ Agregar billetera</button></div>
     </div>
 
@@ -640,7 +735,7 @@ function vAjustes(){
         <button class="btn danger" onclick="borrarTodo()">Borrar todos los datos</button>
       </div>
     </div>
-    <p class="s" style="text-align:center;margin:20px 0">Mis Finanzas · v3</p>`;
+    <p class="s" style="text-align:center;margin:20px 0">Mis Finanzas · v4</p>`;
 }
 function cambiarExchange(id){ state.usdt.exchange=id; state.usdt.manual=false; save(); render(); actualizarUSDT(true); }
 function usdtManual(){
@@ -764,10 +859,22 @@ function formBilletera(id){
     <label>¿Cuánto tenés hoy ahí?</label>
     <input id="bSaldo" inputmode="decimal" placeholder="0" value="${b?b.saldoInicial:''}">
     <p class="s">Es el saldo de arranque. Después se mueve solo con tus gastos e ingresos.</p>
+    <label>¿Rinde? Tasa nominal anual (TNA %)</label>
+    <input id="bTna" inputmode="decimal" placeholder="Ej: 2,71 (dejalo vacío si no rinde)" value="${b&&b.tna?String(b.tna).replace('.',','):''}">
+    <p class="s">La tasa cambia seguido: cuando la veas distinta en tu app, la actualizás acá.</p>
+    <label>Ícono</label>
+    ${selectorMarcas('bMarca', b?b.marca:'')}
     <div class="actions">
       <button class="btn" onclick="guardarBilletera('${id||''}')">Guardar</button>
       ${b?`<button class="btn danger" onclick="borrarBilletera('${id}')">Eliminar</button>`:''}
     </div>`);
+  let marca = b?(b.marca||''):'';
+  activarSelectorMarcas('bMarca', idM=>{
+    marca = idM;
+    const m = MARCAS.find(x=>x.id===idM);
+    if(m && !$('#bNombre').value.trim()) $('#bNombre').value = m.nombre; // completa el nombre si estaba vacío
+  });
+  formBilletera._marca = ()=>marca;
   let mon = b?b.moneda:'ARS';
   const pint=()=>document.querySelectorAll('#bMon button').forEach(x=>x.classList.toggle('on',x.dataset.m===mon));
   document.querySelectorAll('#bMon button').forEach(x=>x.onclick=()=>{mon=x.dataset.m;pint();});
@@ -776,7 +883,8 @@ function formBilletera(id){
 }
 function guardarBilletera(id){
   const nombre=$('#bNombre').value.trim(); if(!nombre) return toast('Poné un nombre');
-  const datos={nombre, moneda:formBilletera._mon(), saldoInicial:num($('#bSaldo').value)};
+  const datos={nombre, moneda:formBilletera._mon(), saldoInicial:num($('#bSaldo').value),
+               tna:num($('#bTna').value)||0, marca:formBilletera._marca()};
   if(id) Object.assign(billetera(id),datos); else state.billeteras.push({id:uid(),...datos});
   save(); cerrarSheet(); render(); toast('👛 Billetera guardada');
 }
@@ -799,7 +907,13 @@ function formDeuda(id){
     <label>¿Qué es?</label>
     <input id="dDesc" placeholder="Ej: Zapatillas, Celular, Préstamo" value="${esc(d?d.descripcion:'')}">
     <label id="dQuienLbl">Tarjeta</label>
-    <input id="dQuien" placeholder="Ej: Visa Galicia" value="${esc(d?d.quien:'')}">
+    <input id="dQuien" placeholder="Ej: Galicia" value="${esc(d?d.quien:'')}">
+    <div id="dTarjetaWrap">
+      <label>Red de la tarjeta</label>
+      <div class="chips" id="dRed">${REDES_TARJETA.map(r=>`<button type="button" class="chip" data-v="${r}">${r}</button>`).join('')}</div>
+      <label>Banco / billetera (para el color)</label>
+      ${selectorMarcas('dMarca', d?d.marca:'')}
+    </div>
     <label>Moneda</label>
     <div class="seg" id="dMon"><button data-v="ARS">Pesos</button><button data-v="USD">Dólares</button></div>
     <div class="grid2">
@@ -817,24 +931,34 @@ function formDeuda(id){
     document.querySelectorAll('#dDir button').forEach(x=>x.classList.toggle('on',x.dataset.v===dir));
     document.querySelectorAll('#dMon button').forEach(x=>x.classList.toggle('on',x.dataset.v===mon));
     $('#dDirWrap').style.display = clase==='persona'?'block':'none';
-    $('#dQuienLbl').textContent = clase==='tarjeta'?'Tarjeta':'Persona';
-    $('#dQuien').placeholder = clase==='tarjeta'?'Ej: Visa Galicia':'Ej: Juan';
+    $('#dQuienLbl').textContent = clase==='tarjeta'?'Banco o billetera de la tarjeta':'Persona';
+    $('#dQuien').placeholder = clase==='tarjeta'?'Ej: Galicia':'Ej: Juan';
+    $('#dTarjetaWrap').style.display = clase==='tarjeta'?'block':'none';
+    document.querySelectorAll('#dRed .chip').forEach(x=>x.classList.toggle('on',x.dataset.v===red));
     if(clase==='tarjeta') dir='debo';
   };
+  let red = d?(d.red||''):'', marca = d?(d.marca||''):'';
+  document.querySelectorAll('#dRed .chip').forEach(x=>x.onclick=()=>{red = red===x.dataset.v?'':x.dataset.v; pint();});
+  activarSelectorMarcas('dMarca', idM=>{
+    marca = idM;
+    const m = MARCAS.find(x=>x.id===idM);
+    if(m && !$('#dQuien').value.trim()) $('#dQuien').value = m.nombre;
+  });
   document.querySelectorAll('#dClase button').forEach(x=>x.onclick=()=>{clase=x.dataset.v;pint();});
   document.querySelectorAll('#dDir button').forEach(x=>x.onclick=()=>{dir=x.dataset.v;pint();});
   document.querySelectorAll('#dMon button').forEach(x=>x.onclick=()=>{mon=x.dataset.v;pint();});
   pint();
-  formDeuda._get = ()=>({clase,dir,mon});
+  formDeuda._get = ()=>({clase,dir,mon,red,marca});
 }
 function guardarDeuda(id){
-  const {clase,dir,mon} = formDeuda._get();
+  const {clase,dir,mon,red,marca} = formDeuda._get();
   const descripcion=$('#dDesc').value.trim(); if(!descripcion) return toast('¿Qué es la cuota?');
   const montoCuota=num($('#dMonto').value), cuotasTotales=parseInt($('#dTot').value)||1;
   if(montoCuota<=0) return toast('Poné el monto de la cuota');
   const cuotasPagadas=Math.min(cuotasTotales, parseInt($('#dPag').value)||0);
   const dia=Math.min(31,Math.max(0,parseInt($('#dDia').value)||0));
-  const datos={clase, direccion:dir, descripcion, quien:$('#dQuien').value.trim(), moneda:mon, montoCuota, cuotasTotales, cuotasPagadas, diaVencimiento:dia};
+  const datos={clase, direccion:dir, descripcion, quien:$('#dQuien').value.trim(), moneda:mon, montoCuota, cuotasTotales, cuotasPagadas, diaVencimiento:dia,
+               red: clase==='tarjeta'?red:'', marca: clase==='tarjeta'?marca:''};
   if(id) Object.assign(state.deudas.find(x=>x.id===id),datos); else state.deudas.push({id:uid(),...datos});
   filtroDeuda = dir;
   save(); cerrarSheet(); render(); toast('💳 Guardado');
