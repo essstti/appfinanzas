@@ -1,6 +1,6 @@
 // Service worker: guarda la app en el celular para que funcione sin internet.
 // Cada vez que cambies algo de la app, subí este número (v1 -> v2) para que el celu baje la versión nueva.
-const VERSION = 'finanzas-v2';
+const VERSION = 'finanzas-v3';
 const ARCHIVOS = [
   './',
   './index.html',

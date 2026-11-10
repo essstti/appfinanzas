@@ -267,10 +267,11 @@ async function actualizarUSDT(forzar=false){
   if(!forzar && hace < 1000*60*10) return; // cada 10 min como máximo
   try{
     // CriptoYa devuelve {ask, totalAsk, bid, totalBid}. "bid" = a cuánto te lo compran = tu precio de VENTA
+    // Usamos "bid" (el que muestra Lemon); "totalBid" le descuenta comisiones y da un poco menos
     const r = await fetch(`https://criptoya.com/api/${state.usdt.exchange}/usdt/ars/1`, {cache:'no-store'});
     if(!r.ok) throw 0;
     const d = await r.json();
-    const venta = Number(d.totalBid || d.bid);
+    const venta = Number(d.bid || d.totalBid);
     if(venta > 0){
       state.usdt.valor = venta;
       state.usdt.actualizado = Date.now();
@@ -619,7 +620,7 @@ function vAjustes(){
       <label style="margin-top:0">Precio de venta de qué exchange</label>
       <div class="chips">${EXCHANGES_USDT.map(e=>`<button class="chip ${state.usdt.exchange===e.id&&!state.usdt.manual?'on':''}" onclick="cambiarExchange('${e.id}')">${e.nombre}</button>`).join('')}</div>
       <label>O cargalo a mano</label>
-      <div class="row"><input id="usdtManual" inputmode="decimal" placeholder="${state.usdt.valor||'Ej: 1500'}"><button class="btn sm" onclick="usdtManual()">Usar</button></div>
+      <div class="row"><input id="usdtManual" inputmode="decimal" placeholder="${state.usdt.valor?state.usdt.valor.toFixed(2).replace('.',','):'Ej: 1500'}"><button class="btn sm" onclick="usdtManual()">Usar</button></div>
       <p class="s" style="margin-bottom:0">Actual: <b>${state.usdt.valor?plata(state.usdt.valor):'sin dato'}</b>${state.usdt.actualizado?` · ${new Date(state.usdt.actualizado).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}`:''}${state.usdt.manual?' · manual':''}</p>
     </div>
 
@@ -639,7 +640,7 @@ function vAjustes(){
         <button class="btn danger" onclick="borrarTodo()">Borrar todos los datos</button>
       </div>
     </div>
-    <p class="s" style="text-align:center;margin:20px 0">Mis Finanzas · v2</p>`;
+    <p class="s" style="text-align:center;margin:20px 0">Mis Finanzas · v3</p>`;
 }
 function cambiarExchange(id){ state.usdt.exchange=id; state.usdt.manual=false; save(); render(); actualizarUSDT(true); }
 function usdtManual(){
