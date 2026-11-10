@@ -1,6 +1,6 @@
 // Service worker: guarda la app en el celular para que funcione sin internet.
 // Cada vez que cambies algo de la app, subí este número (v1 -> v2) para que el celu baje la versión nueva.
-const VERSION = 'finanzas-v11';
+const VERSION = 'finanzas-v12';
 const ARCHIVOS = [
   './',
   './index.html',
@@ -32,8 +32,12 @@ self.addEventListener('fetch', e => {
   // La cotización del dólar va siempre a internet (la app ya maneja si no hay conexión)
   if (url.origin !== location.origin) return;
   // Primero intenta internet (para tener lo último); si no hay, usa la copia guardada
+  // cache:'no-cache' = preguntarle siempre a GitHub si hay algo nuevo (en vez de usar la copia del navegador)
+  const pedido = e.request.mode === 'navigate'
+    ? fetch(e.request.url, {cache:'no-cache', credentials:'same-origin'})
+    : fetch(new Request(e.request, {cache:'no-cache'}));
   e.respondWith(
-    fetch(e.request)
+    pedido
       .then(res => {
         const copia = res.clone();
         caches.open(VERSION).then(c => c.put(e.request, copia));

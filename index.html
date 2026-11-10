@@ -9,10 +9,10 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Cuentas Claras">
-<link rel="manifest" href="manifest.webmanifest?v=11">
-<link rel="apple-touch-icon" href="icons/icon-180.png?v=11">
-<link rel="icon" href="icons/favicon.svg?v=11" type="image/svg+xml">
-<link rel="alternate icon" href="icons/icon-192.png?v=11">
+<link rel="manifest" href="manifest.webmanifest?v=12">
+<link rel="apple-touch-icon" href="icons/icon-180.png?v=12">
+<link rel="icon" href="icons/favicon.svg?v=12" type="image/svg+xml">
+<link rel="alternate icon" href="icons/icon-192.png?v=12">
 <style>
   /* ============================================================
      DISEÑO "TICKET DEL SÚPER"
@@ -235,7 +235,7 @@
    ============================================================ */
 
 const STORAGE_KEY = 'finanzas-v1';
-const VERSION_APP = 11; // subilo junto con el de sw.js, así sabés en Ajustes qué versión tenés
+const VERSION_APP = 12; // subilo junto con el de sw.js, así sabés en Ajustes qué versión tenés
 
 // Logo "Cuentas claras": usa los colores del modo actual (azul de día, cereza de noche)
 function logoSello(u='l', A='var(--txt)', B='var(--accent)', P='var(--bg)'){
@@ -1590,7 +1590,16 @@ if(state.usuario){ actualizarDolar(); actualizarUSDT(); }
 try{ navigator.storage && navigator.storage.persist && navigator.storage.persist(); }catch(e){}
 // Modo offline: registra el service worker
 if('serviceWorker' in navigator){
-  window.addEventListener('load', ()=>{ navigator.serviceWorker.register('sw.js').catch(()=>{}); });
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw.js').then(reg=>reg.update()).catch(()=>{}); // revisa si hay versión nueva
+  });
+  // Cuando llega una versión nueva, la app se recarga sola (una sola vez) para mostrarla
+  let recargando = false;
+  const habiaVersion = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('controllerchange', ()=>{
+    if(recargando || !habiaVersion) return;
+    recargando = true; location.reload();
+  });
 }
 </script>
 </body>
