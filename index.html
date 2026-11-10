@@ -9,10 +9,10 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Cuentas Claras">
-<link rel="manifest" href="manifest.webmanifest?v=12">
-<link rel="apple-touch-icon" href="icons/icon-180.png?v=12">
-<link rel="icon" href="icons/favicon.svg?v=12" type="image/svg+xml">
-<link rel="alternate icon" href="icons/icon-192.png?v=12">
+<link rel="manifest" href="manifest.webmanifest?v=13">
+<link rel="apple-touch-icon" href="icons/icon-180.png?v=13">
+<link rel="icon" href="icons/favicon.svg?v=13" type="image/svg+xml">
+<link rel="alternate icon" href="icons/icon-192.png?v=13">
 <style>
   /* ============================================================
      DISEÑO "TICKET DEL SÚPER"
@@ -111,6 +111,10 @@
   /* barra de abajo */
   nav{position:fixed;left:0;right:0;bottom:0;background:var(--nav-bg);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
     border-top:1.5px dashed var(--txt);display:flex;justify-content:space-around;padding:8px 4px calc(8px + env(safe-area-inset-bottom));z-index:10}
+  @media (min-width:600px){
+    nav{padding-left:calc((100% - 560px)/2);padding-right:calc((100% - 560px)/2)}
+    .fab{right:calc((100% - 560px)/2 + 18px)}
+  }
   nav button{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;color:var(--muted);padding:4px 6px;min-width:58px}
   nav button.on{color:var(--accent);font-weight:700}
   .fab{position:fixed;right:18px;bottom:calc(92px + env(safe-area-inset-bottom));width:58px;height:58px;border-radius:6px;
@@ -197,8 +201,6 @@
   .intro .anillo2{transform-box:fill-box;transform-origin:center;animation:aparecer .5s .15s cubic-bezier(.2,1.5,.45,1) both}
   .intro .gente{animation:subir .5s .45s cubic-bezier(.2,1.3,.4,1) both}
   .intro .puntos{animation:fundido .3s both;animation-delay:var(--fin,2s)}
-  .intro tspan{opacity:0;transition:opacity .12s}
-  .intro tspan.ya{opacity:1}
   @keyframes aparecer{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}
   @keyframes subir{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
   @keyframes fundido{from{opacity:0}to{opacity:1}}
@@ -235,7 +237,7 @@
    ============================================================ */
 
 const STORAGE_KEY = 'finanzas-v1';
-const VERSION_APP = 12; // subilo junto con el de sw.js, así sabés en Ajustes qué versión tenés
+const VERSION_APP = 13; // subilo junto con el de sw.js, así sabés en Ajustes qué versión tenés
 
 // Logo "Cuentas claras": usa los colores del modo actual (azul de día, cereza de noche)
 function logoSello(u='l', A='var(--txt)', B='var(--accent)', P='var(--bg)'){
@@ -1513,11 +1515,10 @@ let efectoPendiente = false;
 function efectoScroll(){
   efectoPendiente = false;
   const bloques = [...$('#main').children];
-  const reducir = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const hayParaBajar = document.documentElement.scrollHeight > window.innerHeight + 20;
   const piso = window.innerHeight - ($('#nav').offsetHeight || 0); // donde empieza la barra de abajo
   for(const el of bloques){
-    if(reducir || !hayParaBajar || !state.usuario){ el.style.transform = el.style.filter = el.style.opacity = el.style.zIndex = ''; continue; }
+    if(!hayParaBajar || !state.usuario){ el.style.transform = el.style.filter = el.style.opacity = el.style.zIndex = ''; continue; }
     const r = el.getBoundingClientRect();
     const abajo  = 1 - limitar((piso - r.top) / ZONA_ABAJO, 0, 1);   // 1 = recién asomando abajo, 0 = ya desplegado
     const arriba = 1 - limitar(r.bottom / ZONA_ARRIBA, 0, 1);        // 1 = casi fuera por arriba, 0 = normal
@@ -1549,7 +1550,6 @@ window.addEventListener('resize', pedirEfecto);
 function mostrarIntro(){
   const el = $('#intro'); if(!el) return;
   el.innerHTML = logoSello('in');
-  const reducir = window.matchMedia('(prefers-reduced-motion: reduce)').matches; // si el celu pide menos animaciones
   // Cada letra pasa a ser un pedacito aparte, invisible al principio y ya en su lugar final
   const letras = [];
   el.querySelectorAll('textPath').forEach(tp=>{
@@ -1557,16 +1557,17 @@ function mostrarIntro(){
     for(const ch of texto){
       const sp = document.createElementNS('http://www.w3.org/2000/svg','tspan');
       sp.textContent = ch===' ' ? '\u00A0' : ch;
+      sp.setAttribute('fill-opacity','0');   // invisible hasta que le toque
       tp.appendChild(sp); letras.push(sp);
     }
   });
-  const inicio = reducir ? 0 : 950, paso = reducir ? 0 : 58;
-  letras.forEach((sp,i)=>setTimeout(()=>sp.classList.add('ya'), inicio + i*paso));
+  const inicio = 950, paso = 58;
+  letras.forEach((sp,i)=>setTimeout(()=>sp.setAttribute('fill-opacity','1'), inicio + i*paso));
   const fin = inicio + letras.length*paso;
   el.style.setProperty('--fin', fin+'ms');
   let cerrado = false;
   const cerrar = ()=>{ if(cerrado) return; cerrado = true; el.classList.add('fuera'); setTimeout(()=>el.remove(), 500); };
-  setTimeout(cerrar, fin + (reducir ? 500 : 700));
+  setTimeout(cerrar, fin + 700);
   el.addEventListener('click', cerrar);
 }
 
