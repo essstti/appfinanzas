@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Mis Finanzas</title>
+<meta name="theme-color" content="#0f1115">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Finanzas">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" href="icons/icon-192.png">
+<style>
+  :root{
+    --bg:#0f1115; --card:#181b22; --card2:#20242d; --line:#2a2f3a;
+    --txt:#f2f4f8; --muted:#8b93a3; --accent:#b6f36b; --accent-txt:#11150b;
+    --red:#ff6b6b; --green:#5ee0a0; --yellow:#ffd166; --blue:#6bb6ff;
+    --r:18px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;background:var(--bg);color:var(--txt);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;
+    font-size:16px;-webkit-font-smoothing:antialiased}
+  body{padding-top:env(safe-area-inset-top);padding-bottom:calc(84px + env(safe-area-inset-bottom))}
+  main{max-width:560px;margin:0 auto;padding:16px}
+  h1{font-size:26px;margin:8px 0 2px;letter-spacing:-.5px}
+  h2{font-size:18px;margin:22px 0 10px}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 14px}
+  .card{background:var(--card);border-radius:var(--r);padding:16px;margin-bottom:12px}
+  .hero{background:linear-gradient(135deg,#232a1a,#181b22 70%);border:1px solid #2f3a20}
+  .big{font-size:30px;font-weight:700;letter-spacing:-.8px}
+  .label{color:var(--muted);font-size:13px;margin-bottom:4px}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .grid2 .card{margin:0}
+  .mid{font-size:20px;font-weight:650}
+  .item{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+  .item:last-child{border-bottom:0}
+  .ico{width:40px;height:40px;border-radius:12px;background:var(--card2);display:grid;place-items:center;font-size:20px;flex:none}
+  .grow{flex:1;min-width:0}
+  .t{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .s{color:var(--muted);font-size:13px;margin-top:2px}
+  .amt{font-weight:650;white-space:nowrap}
+  .neg{color:var(--red)} .pos{color:var(--green)}
+  .pill{display:inline-block;font-size:12px;padding:3px 8px;border-radius:99px;background:var(--card2);color:var(--muted)}
+  .empty{color:var(--muted);text-align:center;padding:22px 8px;font-size:14px}
+  .bar{height:8px;background:var(--card2);border-radius:99px;overflow:hidden;margin-top:6px}
+  .bar>i{display:block;height:100%;background:var(--accent);border-radius:99px}
+  button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+  .btn{background:var(--accent);color:var(--accent-txt);font-weight:700;border-radius:14px;padding:14px;width:100%;font-size:16px}
+  .btn.sec{background:var(--card2);color:var(--txt)}
+  .btn.danger{background:transparent;color:var(--red);border:1px solid #4a2a2a}
+  .btn.sm{width:auto;padding:8px 12px;font-size:14px;border-radius:10px}
+  .chips{display:flex;gap:8px;flex-wrap:wrap}
+  .chip{padding:8px 12px;border-radius:99px;background:var(--card2);font-size:14px}
+  .chip.on{background:var(--accent);color:var(--accent-txt);font-weight:650}
+  .monthnav{display:flex;align-items:center;justify-content:space-between;background:var(--card);border-radius:14px;padding:6px;margin-bottom:12px}
+  .monthnav button{width:40px;height:40px;border-radius:10px;font-size:20px}
+  .monthnav b{}
+  /* nav */
+  nav{position:fixed;left:0;right:0;bottom:0;background:rgba(15,17,21,.92);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    border-top:1px solid var(--line);display:flex;justify-content:space-around;padding:8px 4px calc(8px + env(safe-area-inset-bottom));z-index:10}
+  nav button{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;color:var(--muted);padding:4px 6px;min-width:58px}
+  nav button span{font-size:22px;filter:grayscale(1);opacity:.7}
+  nav button.on{color:var(--accent)} nav button.on span{filter:none;opacity:1}
+  .fab{position:fixed;right:18px;bottom:calc(92px + env(safe-area-inset-bottom));width:58px;height:58px;border-radius:50%;
+    background:var(--accent);color:var(--accent-txt);font-size:32px;font-weight:300;box-shadow:0 8px 24px rgba(182,243,107,.25);z-index:11}
+  /* sheet */
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:20;display:none;align-items:flex-end;justify-content:center}
+  .overlay.open{display:flex}
+  .sheet{background:var(--card);width:100%;max-width:560px;border-radius:24px 24px 0 0;padding:18px 16px calc(20px + env(safe-area-inset-bottom));
+    max-height:90vh;overflow:auto;animation:up .22s ease-out}
+  @keyframes up{from{transform:translateY(60px)}to{transform:none}}
+  .sheet h3{margin:4px 0 14px;font-size:20px}
+  .handle{width:40px;height:5px;border-radius:9px;background:var(--line);margin:0 auto 10px}
+  label{display:block;font-size:13px;color:var(--muted);margin:12px 0 6px}
+  input,select,textarea{width:100%;background:var(--card2);border:1px solid var(--line);color:var(--txt);border-radius:12px;
+    padding:13px 12px;font:inherit;font-size:16px;outline:none;-webkit-appearance:none;appearance:none}
+  input:focus,select:focus{border-color:var(--accent)}
+  .seg{display:flex;background:var(--card2);border-radius:12px;padding:4px;gap:4px}
+  .seg button{flex:1;padding:10px;border-radius:9px;font-size:14px;color:var(--muted)}
+  .seg button.on{background:var(--accent);color:var(--accent-txt);font-weight:700}
+  .actions{display:grid;gap:10px;margin-top:18px}
+  .welcome{min-height:80vh;display:flex;flex-direction:column;justify-content:center;text-align:center}
+  .welcome .emoji{font-size:64px}
+  .emojis{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:8px}
+  .emojis button{font-size:28px;width:52px;height:52px;border-radius:14px;background:var(--card2)}
+  .emojis button.on{outline:2px solid var(--accent)}
+  .toast{position:fixed;left:50%;top:calc(14px + env(safe-area-inset-top));transform:translateX(-50%);background:var(--card2);border:1px solid var(--line);
+    padding:10px 16px;border-radius:99px;font-size:14px;z-index:30;opacity:0;transition:opacity .2s;pointer-events:none}
+  .toast.show{opacity:1}
+  .avatar{width:44px;height:44px;border-radius:14px;background:var(--card2);display:grid;place-items:center;font-size:24px}
+</style>
+</head>
+<body>
+<main id="main"></main>
+<button class="fab" id="fab" aria-label="Agregar">+</button>
+<nav id="nav"></nav>
+<div class="overlay" id="overlay"><div class="sheet" id="sheet"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   Mis Finanzas — app personal (PWA)
+   Todo se guarda en el teléfono (localStorage). Nada se sube a internet.
+   ============================================================ */
+
+const STORAGE_KEY = 'finanzas-v1';
+
+// ---------- Datos fijos ----------
+const CATEGORIAS = [
+  {id:'comida',     nombre:'Comida',      emoji:'🍔'},
+  {id:'super',      nombre:'Súper',       emoji:'🛒'},
+  {id:'transporte', nombre:'Transporte',  emoji:'🚌'},
+  {id:'salidas',    nombre:'Salidas',     emoji:'🍻'},
+  {id:'servicios',  nombre:'Servicios',   emoji:'💡'},
+  {id:'facu',       nombre:'Facultad',    emoji:'📚'},
+  {id:'gym',        nombre:'Gimnasio',    emoji:'🏋️'},
+  {id:'ropa',       nombre:'Ropa',        emoji:'👕'},
+  {id:'salud',      nombre:'Salud',       emoji:'💊'},
+  {id:'subs',       nombre:'Suscripciones', emoji:'📺'},
+  {id:'cuotas',     nombre:'Cuotas',      emoji:'💳'},
+  {id:'otros',      nombre:'Otros',       emoji:'📦'},
+];
+const CATEGORIAS_INGRESO = [
+  {id:'sueldo',  nombre:'Sueldo',   emoji:'💰'},
+  {id:'changa',  nombre:'Changa',   emoji:'🛠️'},
+  {id:'regalo',  nombre:'Regalo',   emoji:'🎁'},
+  {id:'otros_i', nombre:'Otros',    emoji:'📥'},
+];
+const TIPOS_INVERSION = ['Plazo fijo','FCI','Dólares','Cripto','Acciones/CEDEARs','Bonos','Otro'];
+const TIPOS_DOLAR = [
+  {id:'blue',    nombre:'Blue'},
+  {id:'bolsa',   nombre:'MEP'},
+  {id:'oficial', nombre:'Oficial'},
+  {id:'tarjeta', nombre:'Tarjeta'},
+];
+const EMOJIS_AVATAR = ['😎','🤑','🦊','🐸','🚀','🔥','🐱','👾','🦁','🍀'];
+
+// ---------- Estado ----------
+let state = loadState();
+let vista = 'inicio';
+let mesVisto = mesActual(); // "2026-11"
+
+function estadoVacio(){
+  return {
+    usuario: null,                    // {nombre, emoji}
+    billeteras: [],                   // {id, nombre, moneda:'ARS'|'USD', saldoInicial}
+    movimientos: [],                  // {id, tipo:'gasto'|'ingreso', monto, billeteraId, categoria, fecha, nota}
+    deudas: [],                       // {id, clase:'tarjeta'|'persona', direccion:'debo'|'medeben', descripcion, quien, moneda, montoCuota, cuotasTotales, cuotasPagadas, diaVencimiento}
+    inversiones: [],                  // {id, nombre, tipo, moneda, invertido, valorActual, actualizado}
+    dolar: {tipo:'blue', valor:null, actualizado:null, manual:false},
+  };
+}
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw) return Object.assign(estadoVacio(), JSON.parse(raw));
+  }catch(e){}
+  return estadoVacio();
+}
+function save(){
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+  catch(e){ toast('⚠️ No se pudo guardar'); }
+}
+
+// ---------- Utilidades ----------
+const $ = s => document.querySelector(s);
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+function hoyISO(){ const d=new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,10); }
+function mesActual(){ return hoyISO().slice(0,7); }
+function nombreMes(ym){
+  const [y,m] = ym.split('-').map(Number);
+  const mes = new Date(y, m-1, 1).toLocaleDateString('es-AR',{month:'long'});
+  return mes.charAt(0).toUpperCase() + mes.slice(1) + ' ' + y;
+}
+function moverMes(ym, delta){
+  const [y,m] = ym.split('-').map(Number);
+  const d = new Date(y, m-1+delta, 1);
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+}
+function plata(n, moneda='ARS'){
+  const num = Number(n)||0;
+  const txt = num.toLocaleString('es-AR',{minimumFractionDigits: (moneda==='USD' || !Number.isInteger(num))?2:0, maximumFractionDigits:2});
+  return (moneda==='USD' ? 'US$ ' : '$ ') + txt;
+}
+function esc(s){ return String(s??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),1800); }
+// Entiende "1.500,50", "1500,5", "1500.5" y "1.500"
+function num(v){
+  let s = String(v??'').trim().replace(/[^\d.,-]/g,'');
+  if(s.includes(',')) s = s.replace(/\./g,'').replace(',','.');          // coma = decimal
+  else if(/\.\d{3}$/.test(s) && (s.match(/\./g)||[]).length>=1 && !/\.\d{1,2}$/.test(s)) s = s.replace(/\./g,''); // punto de miles
+  return parseFloat(s) || 0;
+}
+function fechaCorta(iso){ const [y,m,d]=iso.split('-'); return `${d}/${m}`; }
+
+function billetera(id){ return state.billeteras.find(b=>b.id===id); }
+function monedaDe(mov){ const b=billetera(mov.billeteraId); return b ? b.moneda : (mov.moneda||'ARS'); }
+function categoria(id){ return [...CATEGORIAS,...CATEGORIAS_INGRESO].find(c=>c.id===id) || {nombre:'Otros',emoji:'📦'}; }
+
+// Convierte a pesos usando la cotización guardada (si no hay, devuelve null para USD)
+function aPesos(monto, moneda){
+  if(moneda==='ARS') return monto;
+  if(!state.dolar.valor) return null;
+  return monto * state.dolar.valor;
+}
+
+function saldoBilletera(b){
+  let saldo = Number(b.saldoInicial)||0;
+  for(const m of state.movimientos){
+    if(m.billeteraId!==b.id) continue;
+    saldo += m.tipo==='ingreso' ? m.monto : -m.monto;
+  }
+  return saldo;
+}
+
+function saludo(){
+  const h = new Date().getHours();
+  if(h<6)  return 'Buenas noches';
+  if(h<13) return 'Buen día';
+  if(h<20) return 'Buenas tardes';
+  return 'Buenas noches';
+}
+
+// ---------- Cotización del dólar ----------
+async function actualizarDolar(forzar=false){
+  if(state.dolar.manual && !forzar) return;
+  const hace = state.dolar.actualizado ? (Date.now()-state.dolar.actualizado) : Infinity;
+  if(!forzar && hace < 1000*60*30) return; // cada 30 min como máximo
+  try{
+    const r = await fetch('https://dolarapi.com/v1/dolares/' + state.dolar.tipo, {cache:'no-store'});
+    if(!r.ok) throw 0;
+    const d = await r.json();
+    if(d && d.venta){
+      state.dolar.valor = Number(d.venta);
+      state.dolar.actualizado = Date.now();
+      state.dolar.manual = false;
+      save(); render();
+      if(forzar) toast('💵 Dólar actualizado');
+    }
+  }catch(e){
+    if(forzar) toast('Sin conexión: uso la última cotización');
+  }
+}
+
+// ============================================================
+//  VISTAS
+// ============================================================
+function render(){
+  if(!state.usuario){ renderBienvenida(); return; }
+  $('#nav').style.display='flex';
+  $('#fab').style.display = (vista==='ajustes') ? 'none' : 'block';
+  renderNav();
+  const vistas = {inicio:vInicio, gastos:vGastos, cuotas:vCuotas, inversiones:vInversiones, ajustes:vAjustes};
+  $('#main').innerHTML = vistas[vista]();
+  window.scrollTo(0,0);
+}
+
+function renderNav(){
+  const tabs = [
+    ['inicio','🏠','Inicio'],
+    ['gastos','🧾','Gastos'],
+    ['cuotas','💳','Cuotas'],
+    ['inversiones','📈','Inversión'],
+    ['ajustes','⚙️','Ajustes'],
+  ];
+  $('#nav').innerHTML = tabs.map(([id,ic,txt]) =>
+    `<button class="${vista===id?'on':''}" onclick="irA('${id}')"><span>${ic}</span>${txt}</button>`).join('');
+}
+function irA(v){ vista=v; render(); }
+
+// ----- Bienvenida (elegir nombre de usuario) -----
+let emojiElegido = '😎';
+function renderBienvenida(){
+  $('#nav').style.display='none'; $('#fab').style.display='none';
+  $('#main').innerHTML = `
+    <div class="welcome">
+      <div class="emoji" id="wEmoji">${emojiElegido}</div>
+      <h1>¡Hola! 👋</h1>
+      <p class="sub">Esta es tu app de finanzas. Todo queda guardado en tu celu, nadie más lo ve.</p>
+      <label style="text-align:left">¿Cómo te llamamos?</label>
+      <input id="wNombre" placeholder="Tu nombre o apodo" maxlength="20" autocomplete="off">
+      <label style="text-align:left">Elegí tu avatar</label>
+      <div class="emojis">${EMOJIS_AVATAR.map(e=>`<button class="${e===emojiElegido?'on':''}" onclick="elegirEmoji('${e}')">${e}</button>`).join('')}</div>
+      <div class="actions"><button class="btn" onclick="crearUsuario()">Arrancar 🚀</button></div>
+    </div>`;
+}
+function elegirEmoji(e){ const n=$('#wNombre')?.value; emojiElegido=e; renderBienvenida(); if(n) $('#wNombre').value=n; }
+function crearUsuario(){
+  const nombre = $('#wNombre').value.trim();
+  if(!nombre){ toast('Poné un nombre 🙂'); return; }
+  state.usuario = {nombre, emoji:emojiElegido};
+  if(state.billeteras.length===0){
+    state.billeteras.push({id:uid(), nombre:'Efectivo', moneda:'ARS', saldoInicial:0});
+  }
+  save(); vista='inicio'; render();
+  toast(`¡Bienvenido, ${nombre}!`);
+  actualizarDolar(true);
+}
+
+// ----- Inicio / Resumen -----
+function vInicio(){
+  const u = state.usuario;
+  const movMes = state.movimientos.filter(m=>m.fecha.startsWith(mesActual()));
+  const gastosARS = movMes.filter(m=>m.tipo==='gasto' && monedaDe(m)==='ARS').reduce((a,m)=>a+m.monto,0);
+  const gastosUSD = movMes.filter(m=>m.tipo==='gasto' && monedaDe(m)==='USD').reduce((a,m)=>a+m.monto,0);
+  const ingresosARS = movMes.filter(m=>m.tipo==='ingreso' && monedaDe(m)==='ARS').reduce((a,m)=>a+m.monto,0);
+  const usdEnPesos = aPesos(gastosUSD,'USD');
+  const totalMesPesos = gastosARS + (usdEnPesos||0);
+
+  // Cuotas que todavía debo (activas)
+  const activas = state.deudas.filter(d=>d.direccion==='debo' && d.cuotasPagadas < d.cuotasTotales);
+  const cuotasMesARS = activas.filter(d=>d.moneda==='ARS').reduce((a,d)=>a+d.montoCuota,0);
+  const cuotasMesUSD = activas.filter(d=>d.moneda==='USD').reduce((a,d)=>a+d.montoCuota,0);
+
+  // Inversiones
+  const invARS = state.inversiones.filter(i=>i.moneda==='ARS').reduce((a,i)=>a+i.valorActual,0);
+  const invUSD = state.inversiones.filter(i=>i.moneda==='USD').reduce((a,i)=>a+i.valorActual,0);
+
+  // Gastos por categoría (en pesos)
+  const porCat = {};
+  for(const m of movMes.filter(m=>m.tipo==='gasto')){
+    const p = aPesos(m.monto, monedaDe(m)); if(p==null) continue;
+    porCat[m.categoria] = (porCat[m.categoria]||0) + p;
+  }
+  const cats = Object.entries(porCat).sort((a,b)=>b[1]-a[1]);
+  const maxCat = cats.length ? cats[0][1] : 1;
+
+  // Próximos vencimientos (ordenados por día del mes)
+  const hoy = new Date().getDate();
+  const proximos = activas.slice().sort((a,b)=>{
+    const da=(a.diaVencimiento-hoy+31)%31, db=(b.diaVencimiento-hoy+31)%31; return da-db;
+  }).slice(0,3);
+
+  return `
+    <div class="row" style="margin-top:6px">
+      <div>
+        <p class="sub" style="margin:0">${saludo()},</p>
+        <h1 style="margin-top:0">${esc(u.nombre)} ${u.emoji}</h1>
+      </div>
+      <button class="avatar" onclick="irA('ajustes')">${u.emoji}</button>
+    </div>
+
+    <div class="card hero" style="margin-top:14px">
+      <div class="label">Gastaste este mes · ${nombreMes(mesActual())}</div>
+      <div class="big">${plata(gastosARS,'ARS')}</div>
+      ${gastosUSD ? `<div class="s">+ ${plata(gastosUSD,'USD')} ${usdEnPesos!=null?`(≈ ${plata(usdEnPesos)})`:''}</div>` : ''}
+      ${gastosUSD && usdEnPesos!=null ? `<div class="s" style="margin-top:8px">Total en pesos: <b style="color:var(--txt)">${plata(totalMesPesos)}</b></div>`:''}
+      ${ingresosARS ? `<div class="s" style="margin-top:8px">Ingresos: <span class="pos">${plata(ingresosARS)}</span></div>`:''}
+    </div>
+
+    <div class="grid2">
+      <div class="card" onclick="irA('cuotas')">
+        <div class="label">💳 Cuotas del mes</div>
+        <div class="mid">${plata(cuotasMesARS)}</div>
+        ${cuotasMesUSD?`<div class="s">+ ${plata(cuotasMesUSD,'USD')}</div>`:''}
+      </div>
+      <div class="card" onclick="irA('inversiones')">
+        <div class="label">📈 Invertido hoy</div>
+        <div class="mid">${plata(invARS)}</div>
+        ${invUSD?`<div class="s">+ ${plata(invUSD,'USD')}</div>`:''}
+      </div>
+    </div>
+
+    <h2>Billeteras</h2>
+    <div class="card">
+      ${state.billeteras.map(b=>{
+        const s=saldoBilletera(b);
+        return `<div class="item" onclick="formBilletera('${b.id}')">
+          <div class="ico">${b.moneda==='USD'?'💵':'👛'}</div>
+          <div class="grow"><div class="t">${esc(b.nombre)}</div><div class="s">${b.moneda==='USD'?'Dólares':'Pesos'}</div></div>
+          <div class="amt ${s<0?'neg':''}">${plata(s,b.moneda)}</div></div>`;
+      }).join('') || `<div class="empty">Todavía no cargaste billeteras</div>`}
+      <button class="btn sec sm" style="margin-top:10px" onclick="formBilletera()">+ Agregar billetera</button>
+    </div>
+
+    ${proximos.length ? `
+    <h2>Próximos vencimientos</h2>
+    <div class="card">
+      ${proximos.map(d=>`
+        <div class="item">
+          <div class="ico">${d.clase==='tarjeta'?'💳':'🤝'}</div>
+          <div class="grow"><div class="t">${esc(d.descripcion)}</div>
+            <div class="s">Día ${d.diaVencimiento} · cuota ${d.cuotasPagadas+1} de ${d.cuotasTotales}</div></div>
+          <div class="amt">${plata(d.montoCuota,d.moneda)}</div>
+        </div>`).join('')}
+    </div>`:''}
+
+    <h2>¿En qué se va la plata?</h2>
+    <div class="card">
+      ${cats.length ? cats.map(([id,val])=>{
+        const c=categoria(id);
+        return `<div style="margin:10px 0">
+          <div class="row"><span>${c.emoji} ${c.nombre}</span><b>${plata(val)}</b></div>
+          <div class="bar"><i style="width:${Math.max(4,val/maxCat*100)}%"></i></div></div>`;
+      }).join('') : `<div class="empty">Cargá tu primer gasto con el botón <b>+</b></div>`}
+    </div>
+
+    <div class="row" style="margin:6px 4px 20px">
+      <span class="s">💵 Dólar ${TIPOS_DOLAR.find(t=>t.id===state.dolar.tipo)?.nombre}: ${state.dolar.valor?plata(state.dolar.valor):'sin dato'}${state.dolar.manual?' (manual)':''}</span>
+      <button class="pill" onclick="actualizarDolar(true)">↻ Actualizar</button>
+    </div>`;
+}
+
+// ----- Gastos -----
+function vGastos(){
+  const lista = state.movimientos.filter(m=>m.fecha.startsWith(mesVisto)).sort((a,b)=>b.fecha.localeCompare(a.fecha) || b.id.localeCompare(a.id));
+  const gARS = lista.filter(m=>m.tipo==='gasto'&&monedaDe(m)==='ARS').reduce((a,m)=>a+m.monto,0);
+  const gUSD = lista.filter(m=>m.tipo==='gasto'&&monedaDe(m)==='USD').reduce((a,m)=>a+m.monto,0);
+
+  // agrupar por día
+  const porDia = {};
+  for(const m of lista){ (porDia[m.fecha] ||= []).push(m); }
+
+  return `
+    <h1>Gastos</h1>
+    <p class="sub">Todo lo que entra y sale, mes a mes.</p>
+    <div class="monthnav">
+      <button onclick="mesVisto=moverMes(mesVisto,-1);render()">‹</button>
+      <b>${nombreMes(mesVisto)}</b>
+      <button onclick="mesVisto=moverMes(mesVisto,1);render()">›</button>
+    </div>
+    <div class="card">
+      <div class="label">Total gastado</div>
+      <div class="big">${plata(gARS)}</div>
+      ${gUSD?`<div class="s">+ ${plata(gUSD,'USD')}</div>`:''}
+    </div>
+    ${Object.keys(porDia).length ? Object.entries(porDia).map(([dia,movs])=>`
+      <div class="label" style="margin:14px 4px 6px">${new Date(dia+'T12:00').toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'short'})}</div>
+      <div class="card" style="padding:4px 16px">
+        ${movs.map(m=>{ const c=categoria(m.categoria), b=billetera(m.billeteraId);
+          return `<div class="item" onclick="formMovimiento('${m.id}')">
+            <div class="ico">${c.emoji}</div>
+            <div class="grow"><div class="t">${esc(m.nota||c.nombre)}</div><div class="s">${c.nombre} · ${esc(b?b.nombre:'—')}</div></div>
+            <div class="amt ${m.tipo==='ingreso'?'pos':''}">${m.tipo==='ingreso'?'+':'-'}${plata(m.monto,monedaDe(m))}</div></div>`;
+        }).join('')}
+      </div>`).join('') : `<div class="card empty">No hay movimientos este mes</div>`}`;
+}
+
+// ----- Cuotas / Deudas -----
+let filtroDeuda = 'debo';
+function vCuotas(){
+  const lista = state.deudas.filter(d=>d.direccion===filtroDeuda);
+  const activas = lista.filter(d=>d.cuotasPagadas<d.cuotasTotales);
+  const terminadas = lista.filter(d=>d.cuotasPagadas>=d.cuotasTotales);
+  const restaARS = activas.filter(d=>d.moneda==='ARS').reduce((a,d)=>a+(d.cuotasTotales-d.cuotasPagadas)*d.montoCuota,0);
+  const restaUSD = activas.filter(d=>d.moneda==='USD').reduce((a,d)=>a+(d.cuotasTotales-d.cuotasPagadas)*d.montoCuota,0);
+
+  const tarjeta = d => {
+    const resta = d.cuotasTotales - d.cuotasPagadas;
+    const pct = d.cuotasPagadas/d.cuotasTotales*100;
+    return `<div class="card">
+      <div class="row" onclick="formDeuda('${d.id}')">
+        <div class="row" style="justify-content:flex-start;gap:12px;min-width:0">
+          <div class="ico">${d.clase==='tarjeta'?'💳':'🤝'}</div>
+          <div style="min-width:0"><div class="t">${esc(d.descripcion)}</div><div class="s">${esc(d.quien||'')}${d.diaVencimiento?` · vence el ${d.diaVencimiento}`:''}</div></div>
+        </div>
+        <div class="amt">${plata(d.montoCuota,d.moneda)}</div>
+      </div>
+      <div class="bar" style="margin-top:12px"><i style="width:${pct}%"></i></div>
+      <div class="row" style="margin-top:8px">
+        <span class="s">${d.cuotasPagadas} de ${d.cuotasTotales} pagadas${resta?` · faltan ${plata(resta*d.montoCuota,d.moneda)}`:''}</span>
+        ${resta ? `<button class="btn sm" onclick="pagarCuota('${d.id}')">${filtroDeuda==='debo'?'Pagar cuota':'Me pagó'}</button>` : `<span class="pill">✅ Terminada</span>`}
+      </div>
+    </div>`;
+  };
+
+  return `
+    <h1>Cuotas y deudas</h1>
+    <p class="sub">Tarjetas, préstamos y lo que te deben.</p>
+    <div class="seg" style="margin-bottom:12px">
+      <button class="${filtroDeuda==='debo'?'on':''}" onclick="filtroDeuda='debo';render()">Lo que debo</button>
+      <button class="${filtroDeuda==='medeben'?'on':''}" onclick="filtroDeuda='medeben';render()">Me deben</button>
+    </div>
+    <div class="card">
+      <div class="label">${filtroDeuda==='debo'?'Te falta pagar':'Te falta cobrar'}</div>
+      <div class="big">${plata(restaARS)}</div>
+      ${restaUSD?`<div class="s">+ ${plata(restaUSD,'USD')}</div>`:''}
+    </div>
+    ${activas.map(tarjeta).join('') || `<div class="card empty">${filtroDeuda==='debo'?'No tenés cuotas pendientes 🎉':'Nadie te debe nada'}</div>`}
+    ${terminadas.length?`<h2>Terminadas</h2>${terminadas.map(tarjeta).join('')}`:''}`;
+}
+
+function pagarCuota(id){
+  const d = state.deudas.find(x=>x.id===id); if(!d) return;
+  const billes = state.billeteras.filter(b=>b.moneda===d.moneda);
+  abrirSheet(`
+    <h3>${d.direccion==='debo'?'Pagar cuota':'Registrar cobro'} ${d.cuotasPagadas+1}/${d.cuotasTotales}</h3>
+    <p class="sub">${esc(d.descripcion)} · ${plata(d.montoCuota,d.moneda)}</p>
+    <label>¿${d.direccion==='debo'?'De qué billetera sale':'A qué billetera entra'}?</label>
+    <select id="pcBille">
+      <option value="">No registrar movimiento</option>
+      ${billes.map(b=>`<option value="${b.id}">${esc(b.nombre)}</option>`).join('')}
+    </select>
+    <div class="actions">
+      <button class="btn" onclick="confirmarPago('${id}')">Confirmar</button>
+      <button class="btn sec" onclick="cerrarSheet()">Cancelar</button>
+    </div>`);
+  if(billes[0]) $('#pcBille').value = billes[0].id;
+}
+function confirmarPago(id){
+  const d = state.deudas.find(x=>x.id===id);
+  const bId = $('#pcBille').value;
+  d.cuotasPagadas = Math.min(d.cuotasTotales, d.cuotasPagadas+1);
+  if(bId){
+    state.movimientos.push({
+      id:uid(), tipo: d.direccion==='debo'?'gasto':'ingreso', monto:d.montoCuota, billeteraId:bId,
+      categoria: d.direccion==='debo'?'cuotas':'otros_i', fecha:hoyISO(),
+      nota:`${d.descripcion} (${d.cuotasPagadas}/${d.cuotasTotales})`
+    });
+  }
+  save(); cerrarSheet(); render();
+  toast(d.cuotasPagadas>=d.cuotasTotales ? '🎉 ¡Terminaste de pagarla!' : '✅ Cuota registrada');
+}
+
+// ----- Inversiones -----
+function vInversiones(){
+  const tot = mon => {
+    const l = state.inversiones.filter(i=>i.moneda===mon);
+    return {inv:l.reduce((a,i)=>a+i.invertido,0), act:l.reduce((a,i)=>a+i.valorActual,0)};
+  };
+  const ars = tot('ARS'), usd = tot('USD');
+  const gan = (inv,act) => { const g=act-inv, p=inv?g/inv*100:0; return `<span class="${g>=0?'pos':'neg'}">${g>=0?'+':''}${p.toFixed(1)}%</span>`; };
+
+  return `
+    <h1>Inversiones</h1>
+    <p class="sub">Cuánto pusiste y cuánto vale hoy.</p>
+    <div class="grid2" style="margin-bottom:12px">
+      <div class="card"><div class="label">En pesos</div><div class="mid">${plata(ars.act)}</div><div class="s">${ars.inv?gan(ars.inv,ars.act):'—'}</div></div>
+      <div class="card"><div class="label">En dólares</div><div class="mid">${plata(usd.act,'USD')}</div><div class="s">${usd.inv?gan(usd.inv,usd.act):'—'}</div></div>
+    </div>
+    <div class="card" style="padding:4px 16px">
+      ${state.inversiones.map(i=>`
+        <div class="item" onclick="formInversion('${i.id}')">
+          <div class="ico">📈</div>
+          <div class="grow"><div class="t">${esc(i.nombre)}</div><div class="s">${esc(i.tipo)} · puse ${plata(i.invertido,i.moneda)}</div></div>
+          <div style="text-align:right"><div class="amt">${plata(i.valorActual,i.moneda)}</div><div class="s">${gan(i.invertido,i.valorActual)}</div></div>
+        </div>`).join('') || `<div class="empty">Todavía no cargaste inversiones</div>`}
+    </div>
+    <p class="s" style="text-align:center">Tocá una inversión para actualizar cuánto vale.</p>`;
+}
+
+// ----- Ajustes -----
+function vAjustes(){
+  const u = state.usuario;
+  return `
+    <h1>Ajustes</h1>
+    <p class="sub">Tu perfil, el dólar y tus respaldos.</p>
+    <div class="card">
+      <div class="row">
+        <div class="row" style="gap:12px"><div class="avatar">${u.emoji}</div><div><div class="t">${esc(u.nombre)}</div><div class="s">Tu perfil</div></div></div>
+        <button class="btn sec sm" onclick="formPerfil()">Editar</button>
+      </div>
+    </div>
+
+    <h2>💵 Cotización del dólar</h2>
+    <div class="card">
+      <label style="margin-top:0">Qué dólar usar para convertir</label>
+      <div class="chips">${TIPOS_DOLAR.map(t=>`<button class="chip ${state.dolar.tipo===t.id&&!state.dolar.manual?'on':''}" onclick="cambiarDolar('${t.id}')">${t.nombre}</button>`).join('')}</div>
+      <label>O cargalo a mano</label>
+      <div class="row"><input id="dolarManual" inputmode="decimal" placeholder="${state.dolar.valor||'Ej: 1200'}"><button class="btn sm" onclick="dolarManual()">Usar</button></div>
+      <p class="s" style="margin-bottom:0">Actual: <b>${state.dolar.valor?plata(state.dolar.valor):'sin dato'}</b>${state.dolar.actualizado?` · ${new Date(state.dolar.actualizado).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}`:''}${state.dolar.manual?' · manual':''}</p>
+    </div>
+
+    <h2>👛 Billeteras</h2>
+    <div class="card" style="padding:4px 16px">
+      ${state.billeteras.map(b=>`<div class="item" onclick="formBilletera('${b.id}')"><div class="ico">${b.moneda==='USD'?'💵':'👛'}</div><div class="grow"><div class="t">${esc(b.nombre)}</div><div class="s">${b.moneda}</div></div><span class="s">›</span></div>`).join('')}
+      <div style="padding:10px 0"><button class="btn sec sm" onclick="formBilletera()">+ Agregar billetera</button></div>
+    </div>
+
+    <h2>💾 Respaldo</h2>
+    <div class="card">
+      <p class="s" style="margin-top:0">Tus datos viven solo en este celular. Bajate un respaldo de vez en cuando por si cambiás de teléfono.</p>
+      <div class="actions" style="margin-top:10px">
+        <button class="btn sec" onclick="exportar()">⬇️ Descargar respaldo</button>
+        <button class="btn sec" onclick="$('#archivoImport').click()">⬆️ Restaurar respaldo</button>
+        <input type="file" id="archivoImport" accept="application/json,.json" style="display:none" onchange="importar(this)">
+        <button class="btn danger" onclick="borrarTodo()">Borrar todos los datos</button>
+      </div>
+    </div>
+    <p class="s" style="text-align:center;margin:20px 0">Mis Finanzas · v1</p>`;
+}
+function cambiarDolar(tipo){ state.dolar.tipo=tipo; state.dolar.manual=false; save(); render(); actualizarDolar(true); }
+function dolarManual(){
+  const v = num($('#dolarManual').value); if(!v){ toast('Poné un valor'); return; }
+  state.dolar = {...state.dolar, valor:v, manual:true, actualizado:Date.now()}; save(); render(); toast('💵 Cotización guardada');
+}
+function formPerfil(){
+  emojiElegido = state.usuario.emoji;
+  abrirSheet(`
+    <h3>Tu perfil</h3>
+    <label>Nombre</label><input id="pNombre" value="${esc(state.usuario.nombre)}" maxlength="20">
+    <label>Avatar</label>
+    <div class="emojis" id="pEmojis">${EMOJIS_AVATAR.map(e=>`<button class="${e===emojiElegido?'on':''}" onclick="emojiElegido='${e}';document.querySelectorAll('#pEmojis button').forEach(x=>x.classList.toggle('on',x.textContent==='${e}'))">${e}</button>`).join('')}</div>
+    <div class="actions"><button class="btn" onclick="guardarPerfil()">Guardar</button></div>`);
+}
+function guardarPerfil(){
+  const n=$('#pNombre').value.trim(); if(!n) return toast('Poné un nombre');
+  state.usuario={nombre:n, emoji:emojiElegido}; save(); cerrarSheet(); render();
+}
+function exportar(){
+  const blob = new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
+  const nombre = `finanzas-respaldo-${hoyISO()}.json`;
+  const file = new File([blob], nombre, {type:'application/json'});
+  if(navigator.canShare && navigator.canShare({files:[file]})){
+    navigator.share({files:[file], title:'Respaldo Mis Finanzas'}).catch(()=>{});
+  }else{
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=nombre; a.click();
+  }
+}
+function importar(input){
+  const f=input.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=()=>{
+    try{
+      const data=JSON.parse(r.result);
+      if(!data.billeteras) throw 0;
+      if(!confirm('Esto reemplaza tus datos actuales por los del respaldo. ¿Seguimos?')) return;
+      state=Object.assign(estadoVacio(),data); save(); render(); toast('✅ Respaldo restaurado');
+    }catch(e){ toast('Ese archivo no es un respaldo válido'); }
+  };
+  r.readAsText(f);
+}
+function borrarTodo(){
+  if(!confirm('¿Seguro? Se borra TODO y no se puede deshacer.')) return;
+  state=estadoVacio(); save(); vista='inicio'; render();
+}
+
+// ============================================================
+//  FORMULARIOS (hoja que sube desde abajo)
+// ============================================================
+function abrirSheet(html){ $('#sheet').innerHTML = '<div class="handle"></div>' + html; $('#overlay').classList.add('open'); $('#fab').style.visibility='hidden'; }
+function cerrarSheet(){ $('#overlay').classList.remove('open'); $('#fab').style.visibility=''; }
+$('#overlay').addEventListener('click', e=>{ if(e.target.id==='overlay') cerrarSheet(); });
+
+// Botón +: depende de la pantalla
+$('#fab').addEventListener('click', ()=>{
+  if(vista==='cuotas') formDeuda();
+  else if(vista==='inversiones') formInversion();
+  else formMovimiento();
+});
+
+// ----- Gasto / ingreso -----
+let tipoMov='gasto', catMov='comida';
+function formMovimiento(id){
+  const m = id ? state.movimientos.find(x=>x.id===id) : null;
+  if(!state.billeteras.length){ toast('Primero creá una billetera'); formBilletera(); return; }
+  tipoMov = m ? m.tipo : 'gasto';
+  catMov = m ? m.categoria : (tipoMov==='gasto'?'comida':'sueldo');
+  const pintar = () => {
+    const cats = tipoMov==='gasto'?CATEGORIAS:CATEGORIAS_INGRESO;
+    $('#mCats').innerHTML = cats.map(c=>`<button class="chip ${c.id===catMov?'on':''}" onclick="catMov='${c.id}';this.parentNode.querySelectorAll('.chip').forEach(x=>x.classList.remove('on'));this.classList.add('on')">${c.emoji} ${c.nombre}</button>`).join('');
+    document.querySelectorAll('#mTipo button').forEach(b=>b.classList.toggle('on', b.dataset.t===tipoMov));
+  };
+  abrirSheet(`
+    <h3>${m?'Editar':'Nuevo'} movimiento</h3>
+    <div class="seg" id="mTipo">
+      <button data-t="gasto">Gasto</button><button data-t="ingreso">Ingreso</button>
+    </div>
+    <label>Monto</label>
+    <input id="mMonto" inputmode="decimal" placeholder="0" value="${m?m.monto:''}">
+    <label>Billetera</label>
+    <select id="mBille">${state.billeteras.map(b=>`<option value="${b.id}">${esc(b.nombre)} (${b.moneda})</option>`).join('')}</select>
+    <label>Categoría</label>
+    <div class="chips" id="mCats"></div>
+    <label>Nota (opcional)</label>
+    <input id="mNota" placeholder="Ej: hamburguesa con los pibes" value="${esc(m?m.nota:'')}">
+    <label>Fecha</label>
+    <input id="mFecha" type="date" value="${m?m.fecha:hoyISO()}">
+    <div class="actions">
+      <button class="btn" onclick="guardarMovimiento('${id||''}')">Guardar</button>
+      ${m?`<button class="btn danger" onclick="borrar('movimientos','${id}')">Eliminar</button>`:''}
+    </div>`);
+  if(m) $('#mBille').value = m.billeteraId;
+  document.querySelectorAll('#mTipo button').forEach(b=>b.onclick=()=>{ tipoMov=b.dataset.t; catMov = tipoMov==='gasto'?'comida':'sueldo'; pintar(); });
+  pintar();
+  if(!m) setTimeout(()=>$('#mMonto').focus(),250);
+}
+function guardarMovimiento(id){
+  const monto = num($('#mMonto').value);
+  if(monto<=0) return toast('Poné un monto');
+  const datos = {tipo:tipoMov, monto, billeteraId:$('#mBille').value, categoria:catMov, nota:$('#mNota').value.trim(), fecha:$('#mFecha').value||hoyISO()};
+  if(id){ Object.assign(state.movimientos.find(x=>x.id===id), datos); }
+  else state.movimientos.push({id:uid(), ...datos});
+  save(); cerrarSheet(); render(); toast(tipoMov==='gasto'?'💸 Gasto guardado':'💰 Ingreso guardado');
+}
+
+// ----- Billetera -----
+function formBilletera(id){
+  const b = id ? billetera(id) : null;
+  abrirSheet(`
+    <h3>${b?'Editar':'Nueva'} billetera</h3>
+    <label>Nombre</label>
+    <input id="bNombre" placeholder="Ej: Mercado Pago, Ualá, Banco Nación" value="${esc(b?b.nombre:'')}">
+    <label>Moneda</label>
+    <div class="seg" id="bMon"><button data-m="ARS">Pesos</button><button data-m="USD">Dólares</button></div>
+    <label>¿Cuánto tenés hoy ahí?</label>
+    <input id="bSaldo" inputmode="decimal" placeholder="0" value="${b?b.saldoInicial:''}">
+    <p class="s">Es el saldo de arranque. Después se mueve solo con tus gastos e ingresos.</p>
+    <div class="actions">
+      <button class="btn" onclick="guardarBilletera('${id||''}')">Guardar</button>
+      ${b?`<button class="btn danger" onclick="borrarBilletera('${id}')">Eliminar</button>`:''}
+    </div>`);
+  let mon = b?b.moneda:'ARS';
+  const pint=()=>document.querySelectorAll('#bMon button').forEach(x=>x.classList.toggle('on',x.dataset.m===mon));
+  document.querySelectorAll('#bMon button').forEach(x=>x.onclick=()=>{mon=x.dataset.m;pint();});
+  pint();
+  formBilletera._mon = ()=>mon;
+}
+function guardarBilletera(id){
+  const nombre=$('#bNombre').value.trim(); if(!nombre) return toast('Poné un nombre');
+  const datos={nombre, moneda:formBilletera._mon(), saldoInicial:num($('#bSaldo').value)};
+  if(id) Object.assign(billetera(id),datos); else state.billeteras.push({id:uid(),...datos});
+  save(); cerrarSheet(); render(); toast('👛 Billetera guardada');
+}
+function borrarBilletera(id){
+  const usados = state.movimientos.filter(m=>m.billeteraId===id).length;
+  if(!confirm(usados?`Tiene ${usados} movimientos. Si la borrás, se borran también. ¿Seguimos?`:'¿Borrar esta billetera?')) return;
+  state.movimientos = state.movimientos.filter(m=>m.billeteraId!==id);
+  state.billeteras = state.billeteras.filter(b=>b.id!==id);
+  save(); cerrarSheet(); render();
+}
+
+// ----- Cuota / deuda -----
+function formDeuda(id){
+  const d = id ? state.deudas.find(x=>x.id===id) : null;
+  let clase = d?d.clase:'tarjeta', dir = d?d.direccion:filtroDeuda, mon = d?d.moneda:'ARS';
+  abrirSheet(`
+    <h3>${d?'Editar':'Nueva'} cuota / deuda</h3>
+    <div class="seg" id="dClase"><button data-v="tarjeta">💳 Tarjeta</button><button data-v="persona">🤝 Persona</button></div>
+    <div id="dDirWrap" style="margin-top:10px"><div class="seg" id="dDir"><button data-v="debo">Yo le debo</button><button data-v="medeben">Me debe</button></div></div>
+    <label>¿Qué es?</label>
+    <input id="dDesc" placeholder="Ej: Zapatillas, Celular, Préstamo" value="${esc(d?d.descripcion:'')}">
+    <label id="dQuienLbl">Tarjeta</label>
+    <input id="dQuien" placeholder="Ej: Visa Galicia" value="${esc(d?d.quien:'')}">
+    <label>Moneda</label>
+    <div class="seg" id="dMon"><button data-v="ARS">Pesos</button><button data-v="USD">Dólares</button></div>
+    <div class="grid2">
+      <div><label>Monto de cada cuota</label><input id="dMonto" inputmode="decimal" placeholder="0" value="${d?d.montoCuota:''}"></div>
+      <div><label>Cantidad de cuotas</label><input id="dTot" inputmode="numeric" placeholder="12" value="${d?d.cuotasTotales:''}"></div>
+      <div><label>Ya pagadas</label><input id="dPag" inputmode="numeric" placeholder="0" value="${d?d.cuotasPagadas:''}"></div>
+      <div><label>Día de vencimiento</label><input id="dDia" inputmode="numeric" placeholder="10" value="${d?d.diaVencimiento||'':''}"></div>
+    </div>
+    <div class="actions">
+      <button class="btn" onclick="guardarDeuda('${id||''}')">Guardar</button>
+      ${d?`<button class="btn danger" onclick="borrar('deudas','${id}')">Eliminar</button>`:''}
+    </div>`);
+  const pint=()=>{
+    document.querySelectorAll('#dClase button').forEach(x=>x.classList.toggle('on',x.dataset.v===clase));
+    document.querySelectorAll('#dDir button').forEach(x=>x.classList.toggle('on',x.dataset.v===dir));
+    document.querySelectorAll('#dMon button').forEach(x=>x.classList.toggle('on',x.dataset.v===mon));
+    $('#dDirWrap').style.display = clase==='persona'?'block':'none';
+    $('#dQuienLbl').textContent = clase==='tarjeta'?'Tarjeta':'Persona';
+    $('#dQuien').placeholder = clase==='tarjeta'?'Ej: Visa Galicia':'Ej: Juan';
+    if(clase==='tarjeta') dir='debo';
+  };
+  document.querySelectorAll('#dClase button').forEach(x=>x.onclick=()=>{clase=x.dataset.v;pint();});
+  document.querySelectorAll('#dDir button').forEach(x=>x.onclick=()=>{dir=x.dataset.v;pint();});
+  document.querySelectorAll('#dMon button').forEach(x=>x.onclick=()=>{mon=x.dataset.v;pint();});
+  pint();
+  formDeuda._get = ()=>({clase,dir,mon});
+}
+function guardarDeuda(id){
+  const {clase,dir,mon} = formDeuda._get();
+  const descripcion=$('#dDesc').value.trim(); if(!descripcion) return toast('¿Qué es la cuota?');
+  const montoCuota=num($('#dMonto').value), cuotasTotales=parseInt($('#dTot').value)||1;
+  if(montoCuota<=0) return toast('Poné el monto de la cuota');
+  const cuotasPagadas=Math.min(cuotasTotales, parseInt($('#dPag').value)||0);
+  const dia=Math.min(31,Math.max(0,parseInt($('#dDia').value)||0));
+  const datos={clase, direccion:dir, descripcion, quien:$('#dQuien').value.trim(), moneda:mon, montoCuota, cuotasTotales, cuotasPagadas, diaVencimiento:dia};
+  if(id) Object.assign(state.deudas.find(x=>x.id===id),datos); else state.deudas.push({id:uid(),...datos});
+  filtroDeuda = dir;
+  save(); cerrarSheet(); render(); toast('💳 Guardado');
+}
+
+// ----- Inversión -----
+function formInversion(id){
+  const i = id ? state.inversiones.find(x=>x.id===id) : null;
+  let mon = i?i.moneda:'ARS';
+  abrirSheet(`
+    <h3>${i?'Actualizar':'Nueva'} inversión</h3>
+    <label>Nombre</label>
+    <input id="iNombre" placeholder="Ej: Plazo fijo Nación, Bitcoin" value="${esc(i?i.nombre:'')}">
+    <label>Tipo</label>
+    <select id="iTipo">${TIPOS_INVERSION.map(t=>`<option ${i&&i.tipo===t?'selected':''}>${t}</option>`).join('')}</select>
+    <label>Moneda</label>
+    <div class="seg" id="iMon"><button data-v="ARS">Pesos</button><button data-v="USD">Dólares</button></div>
+    <div class="grid2">
+      <div><label>Cuánto pusiste</label><input id="iInv" inputmode="decimal" placeholder="0" value="${i?i.invertido:''}"></div>
+      <div><label>Cuánto vale hoy</label><input id="iAct" inputmode="decimal" placeholder="Igual" value="${i?i.valorActual:''}"></div>
+    </div>
+    <div class="actions">
+      <button class="btn" onclick="guardarInversion('${id||''}')">Guardar</button>
+      ${i?`<button class="btn danger" onclick="borrar('inversiones','${id}')">Eliminar</button>`:''}
+    </div>`);
+  const pint=()=>document.querySelectorAll('#iMon button').forEach(x=>x.classList.toggle('on',x.dataset.v===mon));
+  document.querySelectorAll('#iMon button').forEach(x=>x.onclick=()=>{mon=x.dataset.v;pint();});
+  pint();
+  formInversion._mon=()=>mon;
+}
+function guardarInversion(id){
+  const nombre=$('#iNombre').value.trim(); if(!nombre) return toast('Poné un nombre');
+  const invertido=num($('#iInv').value); if(invertido<=0) return toast('¿Cuánto pusiste?');
+  const valorActual = $('#iAct').value.trim() ? num($('#iAct').value) : invertido;
+  const datos={nombre, tipo:$('#iTipo').value, moneda:formInversion._mon(), invertido, valorActual, actualizado:Date.now()};
+  if(id) Object.assign(state.inversiones.find(x=>x.id===id),datos); else state.inversiones.push({id:uid(),...datos});
+  save(); cerrarSheet(); render(); toast('📈 Inversión guardada');
+}
+
+function borrar(coleccion, id){
+  if(!confirm('¿Eliminar?')) return;
+  state[coleccion] = state[coleccion].filter(x=>x.id!==id);
+  save(); cerrarSheet(); render();
+}
+
+// ============================================================
+//  ARRANQUE
+// ============================================================
+render();
+if(state.usuario) actualizarDolar();
+// Pedirle al navegador que no borre los datos
+try{ navigator.storage && navigator.storage.persist && navigator.storage.persist(); }catch(e){}
+// Modo offline: registra el service worker
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{ navigator.serviceWorker.register('sw.js').catch(()=>{}); });
+}
+</script>
+</body>
+</html>
