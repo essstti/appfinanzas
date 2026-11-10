@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <title>Mis Finanzas</title>
-<meta name="theme-color" content="#0f1115">
+<meta name="theme-color" content="#161616">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -13,119 +13,165 @@
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" href="icons/icon-192.png">
 <style>
+  /* ============================================================
+     DISEÑO "TICKET DEL SÚPER"
+     Todos los colores están en variables: el modo noche solo cambia estos valores.
+     ============================================================ */
+  @font-face{font-family:'Space Mono';font-weight:400;font-display:swap;src:url(fonts/SpaceMono-400.woff2) format('woff2')}
+  @font-face{font-family:'Space Mono';font-weight:700;font-display:swap;src:url(fonts/SpaceMono-700.woff2) format('woff2')}
+  @font-face{font-family:'Space Grotesk';font-weight:300 700;font-display:swap;src:url(fonts/SpaceGrotesk.woff2) format('woff2')}
+
+  /* ☀️ Modo día: papel de ticket + sello azul */
   :root{
-    --bg:#0f1115; --card:#181b22; --card2:#20242d; --line:#2a2f3a;
-    --txt:#f2f4f8; --muted:#8b93a3; --accent:#b6f36b; --accent-txt:#11150b;
-    --red:#ff6b6b; --green:#5ee0a0; --yellow:#ffd166; --blue:#6bb6ff;
-    --r:18px;
+    --bg:#e6e3dc;          /* el mostrador */
+    --card:#fffefa;        /* el papel del ticket */
+    --card2:#f1eee6;       /* papel un poco más gris (campos, chips) */
+    --line:#d6d1c5;        /* líneas */
+    --punteo:#b9b3a4;      /* líneas punteadas */
+    --txt:#161616;         /* tinta */
+    --muted:#615e57;       /* tinta gastada */
+    --accent:#2340d9;      /* el sello */
+    --accent-fondo:#2340d9;/* fondo de botones (en modo noche es metálico) */
+    --accent-txt:#ffffff;
+    --red:#c62828; --green:#23784a;
+    --nav-bg:rgba(255,254,250,.94);
+    --graf:#d6d1c5;
+    --sombra:0 1px 0 #cfc9bb;
+    --overlay:rgba(22,22,22,.45);
+    --barra-sup:#161616;
+    --r:3px;
+    color-scheme:light;
   }
+  /* 🌙 Modo noche: ticket en azul marino con sello plateado */
+  :root[data-tema="oscuro"]{
+    --bg:#070d20; --card:#0f1833; --card2:#172246; --line:#24315c; --punteo:#34437a;
+    --txt:#e9edf7; --muted:#97a3c7;
+    --accent:#d3d9e6;
+    --accent-fondo:linear-gradient(135deg,#f4f6fb 0%,#aeb7ca 45%,#e3e8f1 70%,#9ea8bd 100%);
+    --accent-txt:#0a1128;
+    --red:#ff8080; --green:#72dca8;
+    --nav-bg:rgba(7,13,32,.94);
+    --graf:#24315c;
+    --sombra:0 1px 0 #050914;
+    --overlay:rgba(0,0,0,.6);
+    --barra-sup:#070d20;
+    color-scheme:dark;
+  }
+
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{margin:0;background:var(--bg);color:var(--txt);
-    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;
-    font-size:16px;-webkit-font-smoothing:antialiased}
+    font-family:'Space Mono',ui-monospace,Menlo,Consolas,monospace;
+    font-size:15px;-webkit-font-smoothing:antialiased}
+  /* Franja de arriba (donde está la hora del celu): oscura, como la boca de la impresora del ticket */
+  body::before{content:'';position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top);background:var(--barra-sup);z-index:40}
   body{padding-top:env(safe-area-inset-top);padding-bottom:calc(84px + env(safe-area-inset-bottom))}
   main{max-width:560px;margin:0 auto;padding:16px 16px 96px}
-  h1{font-size:26px;margin:8px 0 2px;letter-spacing:-.5px}
-  h2{font-size:18px;margin:22px 0 10px}
-  .sub{color:var(--muted);font-size:14px;margin:0 0 14px}
-  .card{background:var(--card);border-radius:var(--r);padding:16px;margin-bottom:12px}
-  .hero{background:linear-gradient(135deg,#232a1a,#181b22 70%);border:1px solid #2f3a20}
-  .big{font-size:30px;font-weight:700;letter-spacing:-.8px}
-  .label{color:var(--muted);font-size:13px;margin-bottom:4px}
+  h1,h2,h3,nav button,.btn,.seg button{font-family:'Space Grotesk',system-ui,sans-serif}
+  h1{font-size:25px;margin:8px 0 2px;letter-spacing:1px;text-transform:uppercase}
+  h2{font-size:15px;margin:24px 0 10px;letter-spacing:1px;text-transform:uppercase;border-bottom:2px solid var(--txt);padding-bottom:6px}
+  .sub{color:var(--muted);font-size:13px;margin:0 0 14px}
+  .card{background:var(--card);border-radius:var(--r);padding:16px;margin-bottom:12px;border:1px solid var(--line);box-shadow:var(--sombra)}
+  /* Recuadro principal: franja de sello arriba y borde de ticket cortado abajo */
+  .hero{border-top:6px solid var(--accent);padding-bottom:24px;
+    -webkit-mask:radial-gradient(circle 6px at 50% 100%,#0000 97%,#000) 50% 0/14px 100% repeat-x;
+            mask:radial-gradient(circle 6px at 50% 100%,#0000 97%,#000) 50% 0/14px 100% repeat-x}
+  .big{font-size:31px;font-weight:700;letter-spacing:-1px}
+  .label{color:var(--muted);font-size:11px;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px}
   .row{display:flex;align-items:center;justify-content:space-between;gap:10px}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
   .grid2 .card{margin:0}
-  .mid{font-size:20px;font-weight:650}
-  .item{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+  .mid{font-size:19px;font-weight:700;letter-spacing:-.5px}
+  .item{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1.5px dashed var(--punteo)}
   .item:last-child{border-bottom:0}
-  .ico{width:40px;height:40px;border-radius:12px;background:var(--card2);display:grid;place-items:center;font-size:20px;flex:none}
+  .ico{width:40px;height:40px;border-radius:4px;background:var(--card2);display:grid;place-items:center;font-size:20px;flex:none}
   .grow{flex:1;min-width:0}
-  .t{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .s{color:var(--muted);font-size:13px;margin-top:2px}
-  .amt{font-weight:650;white-space:nowrap}
+  .t{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .s{color:var(--muted);font-size:12px;margin-top:2px}
+  .amt{font-weight:700;white-space:nowrap}
   .neg{color:var(--red)} .pos{color:var(--green)}
-  .pill{display:inline-block;font-size:12px;padding:3px 8px;border-radius:99px;background:var(--card2);color:var(--muted)}
-  .empty{color:var(--muted);text-align:center;padding:22px 8px;font-size:14px}
-  .bar{height:8px;background:var(--card2);border-radius:99px;overflow:hidden;margin-top:6px}
-  .bar>i{display:block;height:100%;background:var(--accent);border-radius:99px}
+  /* "Pagado": como un sello estampado, un poco torcido */
+  .pill{display:inline-block;font-size:11px;padding:3px 8px;border-radius:3px;border:1.5px solid var(--accent);color:var(--accent);
+    text-transform:uppercase;letter-spacing:.5px;font-weight:700;background:transparent;transform:rotate(-4deg)}
+  .empty{color:var(--muted);text-align:center;padding:22px 8px;font-size:13px}
+  .bar{height:8px;background:var(--card2);border-radius:0;overflow:hidden;margin-top:6px}
+  .bar>i{display:block;height:100%;background:var(--accent-fondo)}
   button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
-  .btn{background:var(--accent);color:var(--accent-txt);font-weight:700;border-radius:14px;padding:14px;width:100%;font-size:16px}
+  .btn{background:var(--accent-fondo);color:var(--accent-txt);font-weight:700;border-radius:4px;padding:14px;width:100%;font-size:15px;text-transform:uppercase;letter-spacing:1px}
   .btn.sec{background:var(--card2);color:var(--txt)}
-  .btn.danger{background:transparent;color:var(--red);border:1px solid #4a2a2a}
-  .btn.sm{width:auto;padding:8px 12px;font-size:14px;border-radius:10px}
+  .btn.danger{background:transparent;color:var(--red);border:1.5px dashed var(--red)}
+  .btn.sm{width:auto;padding:8px 12px;font-size:13px;white-space:nowrap}
   .chips{display:flex;gap:8px;flex-wrap:wrap}
-  .chip{padding:8px 12px;border-radius:99px;background:var(--card2);font-size:14px}
-  .chip.on{background:var(--accent);color:var(--accent-txt);font-weight:650}
-  .monthnav{display:flex;align-items:center;justify-content:space-between;background:var(--card);border-radius:14px;padding:6px;margin-bottom:12px}
-  .monthnav button{width:40px;height:40px;border-radius:10px;font-size:20px}
-  .monthnav b{}
-  /* nav */
-  nav{position:fixed;left:0;right:0;bottom:0;background:rgba(15,17,21,.92);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
-    border-top:1px solid var(--line);display:flex;justify-content:space-around;padding:8px 4px calc(8px + env(safe-area-inset-bottom));z-index:10}
+  .chip{padding:8px 12px;border-radius:4px;background:var(--card2);font-size:13px}
+  .chip.on{background:var(--accent-fondo);color:var(--accent-txt);font-weight:700}
+  .monthnav{display:flex;align-items:center;justify-content:space-between;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:6px;margin-bottom:12px}
+  .monthnav button{width:40px;height:40px;border-radius:4px;font-size:20px}
+  /* barra de abajo */
+  nav{position:fixed;left:0;right:0;bottom:0;background:var(--nav-bg);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    border-top:1.5px dashed var(--txt);display:flex;justify-content:space-around;padding:8px 4px calc(8px + env(safe-area-inset-bottom));z-index:10}
   nav button{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;color:var(--muted);padding:4px 6px;min-width:58px}
   nav button span{font-size:22px;filter:grayscale(1);opacity:.7}
-  nav button.on{color:var(--accent)} nav button.on span{filter:none;opacity:1}
-  .fab{position:fixed;right:18px;bottom:calc(92px + env(safe-area-inset-bottom));width:58px;height:58px;border-radius:50%;
-    background:var(--accent);color:var(--accent-txt);font-size:32px;font-weight:300;box-shadow:0 8px 24px rgba(182,243,107,.25);z-index:11;display:grid;place-items:center;padding:0}
-  /* sheet */
-  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:20;display:none;align-items:flex-end;justify-content:center}
+  nav button.on{color:var(--accent);font-weight:700} nav button.on span{filter:none;opacity:1}
+  .fab{position:fixed;right:18px;bottom:calc(92px + env(safe-area-inset-bottom));width:58px;height:58px;border-radius:6px;
+    background:var(--accent-fondo);color:var(--accent-txt);box-shadow:0 6px 18px rgba(0,0,0,.25);z-index:11;display:grid;place-items:center;padding:0;
+    transition:transform .25s,opacity .25s}
+  .fab.escondido{transform:translateY(24px) scale(.6);opacity:0;pointer-events:none}
+  /* hoja que sube desde abajo */
+  .overlay{position:fixed;inset:0;background:var(--overlay);z-index:20;display:none;align-items:flex-end;justify-content:center}
   .overlay.open{display:flex}
-  .sheet{background:var(--card);width:100%;max-width:560px;border-radius:24px 24px 0 0;padding:18px 16px calc(20px + env(safe-area-inset-bottom));
+  .sheet{position:relative;background:var(--card);width:100%;max-width:560px;border-radius:10px 10px 0 0;padding:18px 16px calc(20px + env(safe-area-inset-bottom));
     max-height:90vh;overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;animation:up .22s ease-out}
   @keyframes up{from{transform:translateY(60px)}to{transform:none}}
-  .sheet h3{margin:4px 0 14px;font-size:20px}
+  .sheet h3{margin:4px 0 14px;font-size:19px;text-transform:uppercase;letter-spacing:1px;padding-right:44px}
   .handle{width:40px;height:5px;border-radius:9px;background:var(--line);margin:0 auto 10px}
-  label{display:block;font-size:13px;color:var(--muted);margin:12px 0 6px}
-  input,select,textarea{width:100%;background:var(--card2);border:1px solid var(--line);color:var(--txt);border-radius:12px;
+  .cerrar{position:absolute;top:14px;right:14px;width:34px;height:34px;border-radius:4px;background:var(--card2);color:var(--muted);display:grid;place-items:center;padding:0}
+  label{display:block;font-size:11px;color:var(--muted);margin:14px 0 6px;text-transform:uppercase;letter-spacing:.5px}
+  input,select,textarea{width:100%;background:var(--card2);border:1px solid var(--line);color:var(--txt);border-radius:4px;
     padding:13px 12px;font:inherit;font-size:16px;outline:none;-webkit-appearance:none;appearance:none}
   input:focus,select:focus{border-color:var(--accent)}
-  .seg{display:flex;background:var(--card2);border-radius:12px;padding:4px;gap:4px}
-  .seg button{flex:1;padding:10px;border-radius:9px;font-size:14px;color:var(--muted)}
-  .seg button.on{background:var(--accent);color:var(--accent-txt);font-weight:700}
+  .seg{display:flex;background:var(--card2);border-radius:4px;padding:4px;gap:4px}
+  .seg button{flex:1;padding:10px;border-radius:3px;font-size:14px;color:var(--muted)}
+  .seg button.on{background:var(--accent-fondo);color:var(--accent-txt);font-weight:700}
   .actions{display:grid;gap:10px;margin-top:18px}
   .welcome{min-height:80vh;display:flex;flex-direction:column;justify-content:center;text-align:center}
   .welcome .emoji{font-size:64px}
   .emojis{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:8px}
-  .emojis button{font-size:28px;width:52px;height:52px;border-radius:14px;background:var(--card2)}
+  .emojis button{font-size:28px;width:52px;height:52px;border-radius:4px;background:var(--card2)}
   .emojis button.on{outline:2px solid var(--accent)}
-  .toast{position:fixed;left:50%;top:calc(14px + env(safe-area-inset-top));transform:translateX(-50%);background:var(--card2);border:1px solid var(--line);
-    padding:10px 16px;border-radius:99px;font-size:14px;z-index:30;opacity:0;transition:opacity .2s;pointer-events:none}
+  .toast{position:fixed;left:50%;top:calc(14px + env(safe-area-inset-top));transform:translateX(-50%);background:var(--card);border:1.5px dashed var(--txt);
+    padding:10px 16px;border-radius:4px;font-size:13px;z-index:30;opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap}
   .toast.show{opacity:1}
-  .ico.marca{font-weight:800;letter-spacing:-.5px;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display",sans-serif}
+  /* íconos de bancos y billeteras */
+  .ico.marca{font-weight:700;letter-spacing:-.5px;font-family:'Space Grotesk',system-ui,sans-serif}
   .marcas{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;max-height:220px;overflow:auto;padding:2px}
-  .marca-op{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 2px;border-radius:12px;background:var(--card2);font-size:11px;color:var(--muted)}
+  .marca-op{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 2px;border-radius:4px;background:var(--card2);font-size:10px;color:var(--muted)}
   .marca-op span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
   .marca-op.on{outline:2px solid var(--accent);color:var(--txt)}
-  .mini-card{position:relative;width:56px;height:38px;border-radius:7px;flex:none;box-shadow:0 2px 8px rgba(0,0,0,.35);overflow:hidden}
-  .mc-banco{position:absolute;left:5px;top:3px;font-size:9px;font-weight:800}
+  .mini-card{position:relative;width:56px;height:38px;border-radius:5px;flex:none;box-shadow:0 2px 6px rgba(0,0,0,.25);overflow:hidden;font-family:'Space Grotesk',sans-serif}
+  .mc-banco{position:absolute;left:5px;top:3px;font-size:9px;font-weight:700}
   .mc-chip{position:absolute;left:6px;top:16px;width:10px;height:8px;border-radius:2px;background:linear-gradient(135deg,#f6d77a,#c9a240)}
-  .mc-red{position:absolute;right:5px;bottom:3px;font-size:8px;font-weight:800;font-style:italic;text-transform:uppercase;opacity:.95}
-  .rinde{color:var(--green);font-size:12px;margin-top:2px}
-  /* botón X para cerrar las hojas */
-  .sheet{position:relative}
-  .cerrar{position:absolute;top:14px;right:14px;width:34px;height:34px;border-radius:50%;background:var(--card2);color:var(--muted);display:grid;place-items:center;padding:0}
-  .sheet h3{padding-right:44px}
+  .mc-red{position:absolute;right:5px;bottom:3px;font-size:8px;font-weight:700;font-style:italic;text-transform:uppercase;opacity:.95}
+  .rinde{color:var(--green);font-size:11px;margin-top:2px}
   /* gráfico de meses */
   .graf{display:flex;align-items:flex-end;gap:8px;height:190px;padding-top:22px}
   .graf-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;min-width:0}
-  .graf-val{font-size:11px;color:var(--muted);margin-bottom:4px;white-space:nowrap}
+  .graf-val{font-size:10px;color:var(--muted);margin-bottom:4px;white-space:nowrap;letter-spacing:-.5px}
   .graf-col.on .graf-val{color:var(--txt);font-weight:700}
-  .graf-barra{width:100%;max-width:38px;display:flex;flex-direction:column-reverse;gap:2px;border-radius:4px 4px 0 0;overflow:hidden;min-height:2px}
-  .graf-barra i{display:block;width:100%;background:#3a4150}
-  .graf-col.on .graf-barra i{background:var(--accent)}
-  .graf-mes{font-size:12px;color:var(--muted);margin-top:6px;padding-top:6px;border-top:1px solid var(--line);width:100%;text-align:center}
+  .graf-barra{width:100%;max-width:38px;display:flex;flex-direction:column-reverse;gap:2px;overflow:hidden;min-height:2px}
+  .graf-barra i{display:block;width:100%;background:var(--graf)}
+  .graf-col.on .graf-barra i{background:var(--accent-fondo)}
+  .graf-mes{font-size:11px;color:var(--muted);margin-top:6px;padding-top:6px;border-top:1.5px solid var(--txt);width:100%;text-align:center}
   .graf-col.on .graf-mes{color:var(--txt);font-weight:700}
-  .leyenda{display:grid;gap:8px;margin-top:14px}
+  .leyenda{display:grid;gap:8px;margin-top:14px;font-size:14px}
   .leyenda .row span:first-child{display:flex;align-items:center;gap:8px;min-width:0}
-  .punto{width:10px;height:10px;border-radius:3px;flex:none}
+  .punto{width:10px;height:10px;border-radius:2px;flex:none}
   /* elegir billetera */
   .billes{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 6px;margin:0 -2px}
-  .bille-op{flex:none;width:96px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 6px;border-radius:14px;background:var(--card2);font-size:12px}
-  .bille-op span{max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
-  .bille-op small{color:var(--muted);font-size:11px;white-space:nowrap}
+  .bille-op{flex:none;width:100px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 6px;border-radius:4px;background:var(--card2);font-size:12px}
+  .bille-op span{max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:700}
+  .bille-op small{color:var(--muted);font-size:10px;white-space:nowrap}
   .bille-op.on{outline:2px solid var(--accent)}
-  .conv{color:var(--muted);font-size:13px;margin-top:8px}
-  .avatar{width:44px;height:44px;border-radius:14px;background:var(--card2);display:grid;place-items:center;font-size:24px}
+  .conv{color:var(--muted);font-size:12px;margin-top:8px}
+  .avatar{width:44px;height:44px;border-radius:4px;background:var(--card2);display:grid;place-items:center;font-size:24px}
 </style>
 </head>
 <body>
@@ -188,6 +234,7 @@ function estadoVacio(){
     inversiones: [],                  // {id, nombre, tipo, moneda, invertido, valorActual, actualizado}
     suscripciones: [],                // mensualidades: {id, nombre, moneda, monto, dia, billeteraId, ultimoPago:'2026-11'}
     dolar: {tipo:'blue', valor:null, actualizado:null, manual:false},
+    tema: 'auto',                     // 'auto' (como el celu) | 'claro' | 'oscuro'
     usdt:  {exchange:'lemoncash', valor:null, actualizado:null, manual:false}, // precio de VENTA de 1 USDT en pesos
   };
 }
@@ -491,7 +538,7 @@ function renderNav(){
   $('#nav').innerHTML = tabs.map(([id,ic,txt]) =>
     `<button class="${vista===id?'on':''}" onclick="irA('${id}')"><span>${ic}</span>${txt}</button>`).join('');
 }
-function irA(v){ vista=v; render(); }
+function irA(v){ vista=v; $('#fab').classList.remove('escondido'); render(); }
 
 // ----- Bienvenida (elegir nombre de usuario) -----
 let emojiElegido = '😎';
@@ -910,6 +957,13 @@ function vAjustes(){
       </div>
     </div>
 
+    <h2>🌗 Apariencia</h2>
+    <div class="seg">
+      ${[['auto','Automático'],['claro','☀️ Claro'],['oscuro','🌙 Oscuro']].map(([id,txt])=>
+        `<button class="${(state.tema||'auto')===id?'on':''}" onclick="cambiarTema('${id}')">${txt}</button>`).join('')}
+    </div>
+    <p class="s" style="margin:8px 2px 0">Automático usa el modo del celu: claro de día, oscuro si lo tenés en modo noche.</p>
+
     <h2>💵 Cotización del dólar</h2>
     <div class="card">
       <label style="margin-top:0">Qué dólar usar para convertir</label>
@@ -1272,9 +1326,33 @@ function borrar(coleccion, id){
 }
 
 // ============================================================
+//  MODO CLARO / OSCURO
+// ============================================================
+const celuOscuro = window.matchMedia('(prefers-color-scheme: dark)');
+function aplicarTema(){
+  const t = state.tema || 'auto';
+  const oscuro = t==='oscuro' || (t==='auto' && celuOscuro.matches);
+  document.documentElement.dataset.tema = oscuro ? 'oscuro' : 'claro';
+  // Color de la barra de arriba del celu
+  document.querySelector('meta[name="theme-color"]').content = getComputedStyle(document.documentElement).getPropertyValue('--barra-sup').trim();
+}
+function cambiarTema(t){ state.tema=t; save(); aplicarTema(); render(); }
+celuOscuro.addEventListener('change', aplicarTema); // si cambiás el modo del celu con la app abierta
+
+// ============================================================
 //  ARRANQUE
 // ============================================================
+aplicarTema();
 render();
+
+// El botón + se esconde al bajar por la pantalla (para no tapar nada) y vuelve al subir
+let ultimoScroll = 0;
+window.addEventListener('scroll', ()=>{
+  if(document.body.dataset.bloqueado) return;            // con una hoja abierta no hacemos nada
+  const y = window.scrollY;
+  $('#fab').classList.toggle('escondido', y > ultimoScroll && y > 80);
+  ultimoScroll = y;
+}, {passive:true});
 if(state.usuario){ actualizarDolar(); actualizarUSDT(); }
 // Pedirle al navegador que no borre los datos
 try{ navigator.storage && navigator.storage.persist && navigator.storage.persist(); }catch(e){}
