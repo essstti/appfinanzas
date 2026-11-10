@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
-<title>Mis Finanzas</title>
+<title>Cuentas Claras</title>
 <meta name="theme-color" content="#161616">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Finanzas">
+<meta name="apple-mobile-web-app-title" content="Cuentas Claras">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
@@ -67,7 +67,7 @@
   /* Franja de arriba (donde está la hora del celu): oscura, como la boca de la impresora del ticket */
   body::before{content:'';position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top);background:var(--barra-sup);z-index:40}
   body{padding-top:env(safe-area-inset-top);padding-bottom:calc(84px + env(safe-area-inset-bottom))}
-  main{max-width:560px;margin:0 auto;padding:16px 16px 96px}
+  main{max-width:560px;margin:0 auto;padding:16px 16px 130px}
   h1,h2,h3,nav button,.btn,.seg button{font-family:'Space Grotesk',system-ui,sans-serif}
   h1{font-size:25px;margin:8px 0 2px;letter-spacing:1px;text-transform:uppercase}
   h2{font-size:15px;margin:24px 0 10px;letter-spacing:1px;text-transform:uppercase;border-bottom:2px solid var(--txt);padding-bottom:6px}
@@ -111,12 +111,19 @@
   nav{position:fixed;left:0;right:0;bottom:0;background:var(--nav-bg);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
     border-top:1.5px dashed var(--txt);display:flex;justify-content:space-around;padding:8px 4px calc(8px + env(safe-area-inset-bottom));z-index:10}
   nav button{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;color:var(--muted);padding:4px 6px;min-width:58px}
-  nav button span{font-size:22px;filter:grayscale(1);opacity:.7}
-  nav button.on{color:var(--accent);font-weight:700} nav button.on span{filter:none;opacity:1}
+  nav button.on{color:var(--accent);font-weight:700}
   .fab{position:fixed;right:18px;bottom:calc(92px + env(safe-area-inset-bottom));width:58px;height:58px;border-radius:6px;
     background:var(--accent-fondo);color:var(--accent-txt);box-shadow:0 6px 18px rgba(0,0,0,.25);z-index:11;display:grid;place-items:center;padding:0;
     transition:transform .25s,opacity .25s}
   .fab.escondido{transform:translateY(24px) scale(.6);opacity:0;pointer-events:none}
+  /* Abajo de la pantalla, arriba de la barra: lo que todavía no subiste se ve borroso
+     (dos capas: una apenas borrosa más alta y otra más borrosa más abajo) */
+  .difuminado{position:fixed;left:0;right:0;bottom:calc(62px + env(safe-area-inset-bottom));height:120px;pointer-events:none;z-index:9}
+  .difuminado i{position:absolute;inset:0;display:block}
+  .difuminado i:first-child{backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);
+    -webkit-mask:linear-gradient(to top,#000 40%,transparent);mask:linear-gradient(to top,#000 40%,transparent)}
+  .difuminado i:last-child{backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+    -webkit-mask:linear-gradient(to top,#000 15%,transparent 70%);mask:linear-gradient(to top,#000 15%,transparent 70%)}
   /* hoja que sube desde abajo */
   .overlay{position:fixed;inset:0;background:var(--overlay);z-index:20;display:none;align-items:flex-end;justify-content:center}
   .overlay.open{display:flex}
@@ -134,6 +141,7 @@
   .seg button{flex:1;padding:10px;border-radius:3px;font-size:14px;color:var(--muted)}
   .seg button.on{background:var(--accent-fondo);color:var(--accent-txt);font-weight:700}
   .actions{display:grid;gap:10px;margin-top:18px}
+  .seg-chico button{padding:10px 2px;font-size:12px}
   .welcome{min-height:80vh;display:flex;flex-direction:column;justify-content:center;text-align:center}
   .welcome .emoji{font-size:64px}
   .emojis{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:8px}
@@ -173,6 +181,29 @@
   .bille-op small{color:var(--muted);font-size:10px;white-space:nowrap}
   .bille-op.on{outline:2px solid var(--accent)}
   .conv{color:var(--muted);font-size:12px;margin-top:8px}
+  /* íconos */
+  .i{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none;display:block}
+  .i .ac{stroke:var(--accent)} .i .rel{fill:currentColor;stroke:none} .i .ac-rel{fill:var(--accent)}
+  .i-in{width:1.2em;height:1.2em;display:inline-block;vertical-align:-.24em;margin-right:5px}
+  .con-ico{display:flex;align-items:center;gap:2px}
+  .ico{color:var(--txt)} .ico .i{width:22px;height:22px}
+  nav button .i{width:25px;height:25px;margin-bottom:2px}
+  .pill .i-in{width:1em;height:1em;margin-right:4px;vertical-align:-.15em}
+  .pill.sin-sello{transform:none;border-color:var(--line);color:var(--txt)}
+  /* Animación de entrada: fondo del color del modo, borroso, y el sello que se arma en el medio */
+  .intro{position:fixed;inset:0;z-index:100;display:grid;place-items:center;
+    background:color-mix(in srgb,var(--bg) 70%,transparent);backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px);transition:opacity .45s}
+  .intro.fuera{opacity:0;pointer-events:none}
+  .intro .logo{width:min(64vw,260px);height:auto;overflow:visible}
+  .intro .anillo{transform-box:fill-box;transform-origin:center;animation:aparecer .55s cubic-bezier(.2,1.5,.45,1) both}
+  .intro .anillo2{transform-box:fill-box;transform-origin:center;animation:aparecer .5s .15s cubic-bezier(.2,1.5,.45,1) both}
+  .intro .gente{animation:subir .5s .45s cubic-bezier(.2,1.3,.4,1) both}
+  .intro .puntos{animation:fundido .3s both;animation-delay:var(--fin,2s)}
+  .intro tspan{opacity:0;transition:opacity .12s}
+  .intro tspan.ya{opacity:1}
+  @keyframes aparecer{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}
+  @keyframes subir{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
+  @keyframes fundido{from{opacity:0}to{opacity:1}}
   /* logo */
   .logo text{font-family:'Space Grotesk',system-ui,sans-serif}
   .logo-bienvenida{width:190px;height:190px;margin:0 auto 6px}
@@ -185,26 +216,28 @@
 <main id="main"></main>
 <button class="fab" id="fab" aria-label="Agregar"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
 <nav id="nav"></nav>
+<div class="difuminado" id="difuminado" aria-hidden="true"><i></i><i></i></div>
 <div class="overlay" id="overlay"><div class="sheet" id="sheet"></div></div>
 <div class="toast" id="toast"></div>
+<div class="intro" id="intro" aria-hidden="true"></div>
 
 <script>
 /* ============================================================
-   Mis Finanzas — app personal (PWA)
+   Cuentas Claras — app personal (PWA)
    Todo se guarda en el teléfono (localStorage). Nada se sube a internet.
    ============================================================ */
 
 const STORAGE_KEY = 'finanzas-v1';
-const VERSION_APP = 9; // subilo junto con el de sw.js, así sabés en Ajustes qué versión tenés
+const VERSION_APP = 10; // subilo junto con el de sw.js, así sabés en Ajustes qué versión tenés
 
 // Logo "Cuentas claras": usa los colores del modo actual (azul de día, cereza de noche)
 function logoSello(u='l', A='var(--txt)', B='var(--accent)', P='var(--bg)'){
-  return `<svg xmlns="http://www.w3.org/2000/svg" class="logo" viewBox="0 0 256 256"><g transform="rotate(-8 128 128)"><circle cx="128" cy="128" r="118" fill="none" stroke="${B}" stroke-width="10"/><defs><path id="arr-${u}" d="M40 128 A88 88 0 0 1 216 128"/><path id="aba-${u}" d="M30 128 A98 98 0 0 0 226 128"/></defs>
+  return `<svg xmlns="http://www.w3.org/2000/svg" class="logo" viewBox="0 0 256 256"><g transform="rotate(-8 128 128)"><circle class="anillo" cx="128" cy="128" r="118" fill="none" stroke="${B}" stroke-width="10"/><defs><path id="arr-${u}" d="M40 128 A88 88 0 0 1 216 128"/><path id="aba-${u}" d="M30 128 A98 98 0 0 0 226 128"/></defs>
 <text font-family="Space Grotesk" font-weight="700" font-size="24" letter-spacing="3" fill="${B}"><textPath href="#arr-${u}" startOffset="50%" text-anchor="middle">CUENTAS CLARAS</textPath></text>
 <text font-family="Space Grotesk" font-weight="500" font-size="15" letter-spacing="2" fill="${B}"><textPath href="#aba-${u}" startOffset="50%" text-anchor="middle">CONSERVAN LA AMISTAD</textPath></text>
-<g fill="${B}"><circle cx="37" cy="128" r="5"/><circle cx="219" cy="128" r="5"/></g>
-<circle cx="128" cy="128" r="80" fill="none" stroke="${B}" stroke-width="4"/><defs><clipPath id="rec-${u}"><circle cx="128" cy="128" r="75"/></clipPath></defs>
-<g clip-path="url(#rec-${u})"><g transform="translate(48 42) scale(0.66)"><path d="M104 330 V184 Q104 126 158 126 Q212 126 212 184 V330 H104 Z" fill="${B}"/>
+<g class="puntos" fill="${B}"><circle cx="37" cy="128" r="5"/><circle cx="219" cy="128" r="5"/></g>
+<circle class="anillo2" cx="128" cy="128" r="80" fill="none" stroke="${B}" stroke-width="4"/><defs><clipPath id="rec-${u}"><circle cx="128" cy="128" r="75"/></clipPath></defs>
+<g class="gente" clip-path="url(#rec-${u})"><g transform="translate(48 42) scale(0.66)"><path d="M104 330 V184 Q104 126 158 126 Q212 126 212 184 V330 H104 Z" fill="${B}"/>
 <circle cx="150" cy="82" r="30" fill="${B}"/>
 <path d="M44 330 V184 Q44 126 98 126 Q152 126 152 184 V330 H44 Z" fill="${A}" stroke="${P}" stroke-width="9" paint-order="stroke"/>
 <circle cx="104" cy="82" r="30" fill="${A}" stroke="${P}" stroke-width="8" paint-order="stroke"/>
@@ -216,25 +249,25 @@ function logoSello(u='l', A='var(--txt)', B='var(--accent)', P='var(--bg)'){
 
 // ---------- Datos fijos ----------
 const CATEGORIAS = [
-  {id:'comida',     nombre:'Comida',      emoji:'🍔'},
-  {id:'super',      nombre:'Súper',       emoji:'🛒'},
-  {id:'transporte', nombre:'Transporte',  emoji:'🚌'},
-  {id:'salidas',    nombre:'Salidas',     emoji:'🍻'},
-  {id:'servicios',  nombre:'Servicios',   emoji:'💡'},
-  {id:'facu',       nombre:'Facultad',    emoji:'📚'},
-  {id:'gym',        nombre:'Gimnasio',    emoji:'🏋️'},
-  {id:'ropa',       nombre:'Ropa',        emoji:'👕'},
-  {id:'salud',      nombre:'Salud',       emoji:'💊'},
-  {id:'subs',       nombre:'Suscripciones', emoji:'📺'},
-  {id:'cuotas',     nombre:'Cuotas',      emoji:'💳'},
-  {id:'otros',      nombre:'Otros',       emoji:'📦'},
+  {id:'comida',     nombre:'Comida',      ic:'comida'},
+  {id:'super',      nombre:'Súper',       ic:'super'},
+  {id:'transporte', nombre:'Transporte',  ic:'transporte'},
+  {id:'salidas',    nombre:'Salidas',     ic:'salidas'},
+  {id:'servicios',  nombre:'Servicios',   ic:'servicios'},
+  {id:'facu',       nombre:'Facultad',    ic:'facu'},
+  {id:'gym',        nombre:'Gimnasio',    ic:'gym'},
+  {id:'ropa',       nombre:'Ropa',        ic:'ropa'},
+  {id:'salud',      nombre:'Salud',       ic:'salud'},
+  {id:'subs',       nombre:'Suscripciones', ic:'subs'},
+  {id:'cuotas',     nombre:'Cuotas',      ic:'tarjeta'},
+  {id:'otros',      nombre:'Otros',       ic:'otros'},
 ];
 const CATEGORIAS_INGRESO = [
-  {id:'laburo',  nombre:'Laburo',   emoji:'💼'},
-  {id:'sueldo',  nombre:'Sueldo',   emoji:'💰'},
-  {id:'changa',  nombre:'Changa',   emoji:'🛠️'},
-  {id:'regalo',  nombre:'Regalo',   emoji:'🎁'},
-  {id:'otros_i', nombre:'Otros',    emoji:'📥'},
+  {id:'laburo',  nombre:'Laburo',   ic:'laburo'},
+  {id:'sueldo',  nombre:'Sueldo',   ic:'billete'},
+  {id:'changa',  nombre:'Changa',   ic:'changa'},
+  {id:'regalo',  nombre:'Regalo',   ic:'regalo'},
+  {id:'otros_i', nombre:'Otros',    ic:'entrada'},
 ];
 const TIPOS_INVERSION = ['Plazo fijo','FCI','Dólares','Cripto','Acciones/CEDEARs','Bonos','Otro'];
 const TIPOS_DOLAR = [
@@ -257,7 +290,7 @@ function estadoVacio(){
     movimientos: [],                  // {id, tipo:'gasto'|'ingreso', monto, billeteraId, categoria, fecha, nota}
     deudas: [],                       // {id, clase:'tarjeta'|'persona', direccion:'debo'|'medeben', descripcion, quien, moneda, montoCuota, cuotasTotales, cuotasPagadas, diaVencimiento}
     inversiones: [],                  // {id, nombre, tipo, moneda, invertido, valorActual, actualizado}
-    suscripciones: [],                // mensualidades: {id, nombre, moneda, monto, dia, billeteraId, ultimoPago:'2026-11'}
+    suscripciones: [],                // mensualidades: {id, nombre, moneda, monto, dia, cada (meses), billeteraId, ultimoPago:'2026-11'}
     dolar: {tipo:'blue', valor:null, actualizado:null, manual:false},
     tema: 'auto',                     // 'auto' (como el celu) | 'claro' | 'oscuro'
     usdt:  {exchange:'lemoncash', valor:null, actualizado:null, manual:false}, // precio de VENTA de 1 USDT en pesos
@@ -276,7 +309,7 @@ function loadState(){
 }
 function save(){
   try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
-  catch(e){ toast('⚠️ No se pudo guardar'); }
+  catch(e){ toast('No se pudo guardar'); }
 }
 
 // ---------- Utilidades ----------
@@ -313,7 +346,7 @@ function fechaCorta(iso){ const [y,m,d]=iso.split('-'); return `${d}/${m}`; }
 
 function billetera(id){ return state.billeteras.find(b=>b.id===id); }
 function monedaDe(mov){ const b=billetera(mov.billeteraId); return b ? b.moneda : (mov.moneda||'ARS'); }
-function categoria(id){ return [...CATEGORIAS,...CATEGORIAS_INGRESO].find(c=>c.id===id) || {nombre:'Otros',emoji:'📦'}; }
+function categoria(id){ return [...CATEGORIAS,...CATEGORIAS_INGRESO].find(c=>c.id===id) || {nombre:'Otros',ic:'otros'}; }
 
 // Convierte a pesos usando la cotización guardada (si no hay, devuelve null para USD)
 function aPesos(monto, moneda){
@@ -334,10 +367,10 @@ function saldoBilletera(b){
 
 function saludo(){
   const h = new Date().getHours();
-  if(h<6)  return 'Buenas noches';
-  if(h<13) return 'Buen día';
-  if(h<20) return 'Buenas tardes';
-  return 'Buenas noches';
+  if(h<6)  return 'Boa noite';
+  if(h<13) return 'Bom dia';
+  if(h<20) return 'Boa tarde';
+  return 'Boa noite';
 }
 
 // ---------- Cotización del dólar ----------
@@ -354,7 +387,7 @@ async function actualizarDolar(forzar=false){
       state.dolar.actualizado = Date.now();
       state.dolar.manual = false;
       save(); render();
-      if(forzar) toast('💵 Dólar actualizado');
+      if(forzar) toast('Dólar actualizado');
     }
   }catch(e){
     if(forzar) toast('Sin conexión: uso la última cotización');
@@ -385,7 +418,7 @@ async function actualizarUSDT(forzar=false){
       state.usdt.actualizado = Date.now();
       state.usdt.manual = false;
       save(); render();
-      if(forzar) toast('🪙 USDT actualizado');
+      if(forzar) toast('USDT actualizado');
     }
   }catch(e){
     if(forzar) toast('No pude traer el USDT: uso el último guardado');
@@ -423,6 +456,48 @@ const MARCAS = [
   {id:'cordoba',   nombre:'Bancor',       ini:'BC',   bg:'#00548c', fg:'#fff', buscar:['bancor','cordoba','córdoba']},
 ];
 // Servicios típicos de mensualidad (para el ícono de color)
+// ---------- Íconos propios (estilo iPhone: trazo fino, puntas redondeadas) ----------
+// Lo que tiene class="ac" se pinta con el color del modo: azul de día, cereza de noche.
+const ICONOS = {
+  casa:'<path d="M3.5 11 12 3.8l8.5 7.2"/><path d="M5.8 9.2V20h12.4V9.2"/><path class="ac" d="M10 20v-5.2h4V20"/>',
+  recibo:'<path d="M6 3h12v18l-2-1.4-2 1.4-2-1.4-2 1.4-2-1.4-2 1.4z"/><path d="M9 8h6M9 11.5h6"/><path class="ac" d="M9 15h3.5"/>',
+  tarjeta:'<rect x="2.8" y="5.5" width="18.4" height="13" rx="2.6"/><path d="M2.8 9.8h18.4"/><path class="ac" d="M6.3 14.6h3.4"/>',
+  grafico:'<path d="M4 4v16h16"/><path class="ac" d="M7.5 15.5l3.8-4.2 3 2.6 5-5.6"/><path class="ac" d="M15.6 8.3h3.7V12"/>',
+  ajustes:'<path d="M19.02 10.38 L21.51 10.66 L21.51 13.34 L19.02 13.62 L18.11 15.82 L19.67 17.78 L17.78 19.67 L15.82 18.11 L13.62 19.02 L13.34 21.51 L10.66 21.51 L10.38 19.02 L8.18 18.11 L6.22 19.67 L4.33 17.78 L5.89 15.82 L4.98 13.62 L2.49 13.34 L2.49 10.66 L4.98 10.38 L5.89 8.18 L4.33 6.22 L6.22 4.33 L8.18 5.89 L10.38 4.98 L10.66 2.49 L13.34 2.49 L13.62 4.98 L15.82 5.89 L17.78 4.33 L19.67 6.22 L18.11 8.18Z"/><circle cx="12" cy="12" r="2.9"/>',
+  comida:'<path d="M7 3v5.5a2 2 0 0 0 4 0V3M9 3v18"/><path d="M16.8 21V3c-2.2 1.4-3.3 4-3.3 7.2 0 1.6.9 2.6 3.3 2.6"/>',
+  super:'<path d="M2.8 4h2.6l2.3 10.6h10.1l2-7.4H6.3"/><circle cx="9.3" cy="19" r="1.4"/><circle cx="16.6" cy="19" r="1.4"/>',
+  transporte:'<rect x="5" y="3.2" width="14" height="14.8" rx="3"/><path d="M5 11h14"/><path d="M8.2 21v-3M15.8 21v-3"/><circle class="rel" cx="8.6" cy="14.6" r="1"/><circle class="rel" cx="15.4" cy="14.6" r="1"/>',
+  salidas:'<path d="M5.5 8h8.6v11a2 2 0 0 1-2 2H7.5a2 2 0 0 1-2-2z"/><path d="M14.1 10.5h2.2a2 2 0 0 1 2 2v2.6a2 2 0 0 1-2 2h-2.2"/><path d="M5.5 8a2.4 2.4 0 0 1 4.3-1.6 2.4 2.4 0 0 1 4.3 1.6"/><path d="M8.6 12v5.5M11.2 12v5.5"/>',
+  servicios:'<path d="M9.3 17.6h5.4M10.2 20.8h3.6"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.7.6 1 1.4 1 2.2v1.6h5.2V16c0-.8.3-1.6 1-2.2A6 6 0 0 0 12 3z"/>',
+  facu:'<path d="M3 5.6c3-1 6-.8 9 1.1 3-1.9 6-2.1 9-1.1V19c-3-1-6-.8-9 1.1-3-1.9-6-2.1-9-1.1z"/><path d="M12 6.7v13.4"/>',
+  gym:'<path d="M6.5 7v10M17.5 7v10M3.6 9.6v4.8M20.4 9.6v4.8M6.5 12h11"/>',
+  ropa:'<path d="M8.4 3.6 3.6 6.4l1.9 3.9 2.1-1V20.6h8.8V9.3l2.1 1 1.9-3.9-4.8-2.8c-.6 1.5-1.9 2.4-3.6 2.4s-3-.9-3.6-2.4z"/>',
+  salud:'<rect x="3.5" y="3.5" width="17" height="17" rx="4.5"/><path class="ac" d="M12 8v8M8 12h8"/>',
+  subs:'<rect x="3" y="4.5" width="18" height="12.5" rx="2.6"/><path d="M8.5 20.3h7"/><path class="ac" d="M10.6 8.2v5l4.1-2.5z"/>',
+  otros:'<path d="M3.6 7.6 12 3.2l8.4 4.4v8.8L12 20.8l-8.4-4.4z"/><path d="M3.6 7.6 12 12l8.4-4.4M12 12v8.8"/>',
+  laburo:'<rect x="3" y="7" width="18" height="13" rx="2.6"/><path d="M8.8 7V5.4c0-.8.7-1.4 1.5-1.4h3.4c.8 0 1.5.6 1.5 1.4V7"/><path d="M3 12.4h18"/><path class="ac" d="M10.8 12.4v1.8h2.4v-1.8"/>',
+  billete:'<rect x="2.6" y="6" width="18.8" height="12" rx="2.2"/><circle class="ac" cx="12" cy="12" r="2.8"/><path d="M6 9.4v.01M18 14.6v.01"/>',
+  changa:'<path d="M13 9.6 4.4 18.2a1.5 1.5 0 0 0 2.1 2.1L15.1 11.7"/><path d="M11.2 6.8 14.6 3.4c.6-.6 1.6-.6 2.2 0l3.8 3.8c.6.6.6 1.6 0 2.2l-3.4 3.4z"/><path class="ac" d="M15.6 6.2l2.2 2.2"/>',
+  regalo:'<rect x="3.6" y="8.6" width="16.8" height="4" rx="1"/><path d="M5.2 12.6v7.4h13.6v-7.4"/><path class="ac" d="M12 8.6V20"/><path d="M12 8.6C10.4 5.2 6.6 5.2 7.4 7.4c.5 1.2 4.6 1.2 4.6 1.2zm0 0c1.6-3.4 5.4-3.4 4.6-1.2-.5 1.2-4.6 1.2-4.6 1.2z"/>',
+  entrada:'<path class="ac" d="M12 3.5v10M8 9.8l4 4 4-4"/><path d="M4 14v4.4c0 .9.7 1.6 1.6 1.6h12.8c.9 0 1.6-.7 1.6-1.6V14"/>',
+  dolar:'<rect x="2.6" y="6" width="18.8" height="12" rx="2.2"/><path class="ac" d="M12 8.2v7.6M14 9.8c-.4-.8-3.8-1-3.8.6 0 1.6 3.8.8 3.8 2.6 0 1.6-3.4 1.4-4 .4"/>',
+  usdt:'<circle cx="12" cy="12" r="8.6"/><path class="ac" d="M8.4 8.8h7.2M12 8.8v7.4"/>',
+  billetera:'<path d="M4 7.6A2.6 2.6 0 0 1 6.6 5h11v3.4"/><path d="M4 7.6v10A2.6 2.6 0 0 0 6.6 20.2H20V8.4H6.6A2.6 2.6 0 0 1 4 7.6z"/><circle class="rel ac-rel" cx="16.3" cy="14.3" r="1.2"/>',
+  personas:'<circle cx="9" cy="8" r="3.2"/><path d="M3.2 19.6a5.8 5.8 0 0 1 11.6 0"/><circle cx="16.8" cy="8.8" r="2.5"/><path d="M15.6 13.8a4.6 4.6 0 0 1 5.6 4.5"/>',
+  repetir:'<path d="M4.2 11.5A7.8 7.8 0 0 1 17.6 6.5L20 9"/><path class="ac" d="M20 4.2V9h-4.8"/><path d="M19.8 12.5A7.8 7.8 0 0 1 6.4 17.5L4 15"/><path class="ac" d="M4 19.8V15h4.8"/>',
+  sol:'<circle cx="12" cy="12" r="4"/><path d="M12 2.8v2M12 19.2v2M2.8 12h2M19.2 12h2M5.5 5.5l1.4 1.4M17.1 17.1l1.4 1.4M5.5 18.5l1.4-1.4M17.1 6.9l1.4-1.4"/>',
+  luna:'<path d="M19.6 14.6A8 8 0 0 1 9.4 4.4a8 8 0 1 0 10.2 10.2z"/>',
+  auto:'<circle cx="12" cy="12" r="8.4"/><path class="rel" d="M12 3.6a8.4 8.4 0 0 1 0 16.8z"/>',
+  bajar:'<path d="M12 3.5v11M7.8 10.5l4.2 4.2 4.2-4.2"/><path d="M4.5 19.8h15"/>',
+  subir:'<path d="M12 15V4M7.8 8l4.2-4.2L16.2 8"/><path d="M4.5 19.8h15"/>',
+  tilde:'<path d="M5 12.6l4.4 4.4L19 7.4"/>',
+  chispa:'<path d="M12 3.5c.6 4.4 2.1 5.9 6.5 6.5-4.4.6-5.9 2.1-6.5 6.5-.6-4.4-2.1-5.9-6.5-6.5 4.4-.6 5.9-2.1 6.5-6.5z"/>',
+  actualizar:'<path d="M19.6 12.4a7.6 7.6 0 1 1-2.3-5.8"/><path d="M19.6 4.2v4.6H15"/>'
+};
+function ic(nombre, clase=''){ return `<svg class="i ${clase}" viewBox="0 0 24 24" aria-hidden="true">${ICONOS[nombre]||ICONOS.otros}</svg>`; }
+// Ícono chiquito para poner dentro de un texto (títulos, botones, etiquetas)
+function ici(nombre){ return ic(nombre,'i-in'); }
+
 const SERVICIOS = [
   {id:'claude',    nombre:'Claude',      ini:'C',   bg:'#d97757', fg:'#fff', buscar:['claude']},
   {id:'chatgpt',   nombre:'ChatGPT',     ini:'GPT', bg:'#10a37f', fg:'#fff', buscar:['chatgpt','openai']},
@@ -449,8 +524,8 @@ function marcaDe(id, texto){
 function iconoBilletera(b){
   const m = marcaDe(b.marca, b.nombre);
   if(m) return badge(m);
-  if(/efectivo|cash/i.test(b.nombre) && b.moneda==='ARS') return '<div class="ico">💵</div>';
-  return `<div class="ico">${iconoMoneda(b.moneda)}</div>`;
+  if(/efectivo|cash/i.test(b.nombre) && b.moneda==='ARS') return `<div class="ico">${ic('billete')}</div>`;
+  return `<div class="ico">${ic(iconoMoneda(b.moneda))}</div>`;
 }
 function badge(m, extra=''){
   const fs = m.ini.length>=4?11 : m.ini.length===3?13 : 16;
@@ -462,7 +537,7 @@ function miniTarjeta(d){
   const bg = m ? m.bg : '#3a4150';
   const fg = m ? m.fg : '#fff';
   return `<div class="mini-card" style="background:linear-gradient(135deg, ${bg}, ${oscurecer(bg)});color:${fg}">
-    <span class="mc-banco">${m?m.ini:'💳'}</span><span class="mc-chip"></span><span class="mc-red">${esc(({Mastercard:'Master'})[d.red]||d.red||'')}</span></div>`;
+    <span class="mc-banco">${m?m.ini:''}</span><span class="mc-chip"></span><span class="mc-red">${esc(({Mastercard:'Master'})[d.red]||d.red||'')}</span></div>`;
 }
 function oscurecer(hex){
   const n = parseInt(hex.slice(1),16);
@@ -472,7 +547,7 @@ function oscurecer(hex){
 // Selector de marca para los formularios
 function selectorMarcas(idInput, elegida){
   return `<div class="marcas" id="${idInput}">
-    <button type="button" class="marca-op ${!elegida?'on':''}" data-id=""><div class="ico">✨</div><span>Auto</span></button>
+    <button type="button" class="marca-op ${!elegida?'on':''}" data-id=""><div class="ico">${ic('chispa')}</div><span>Auto</span></button>
     ${MARCAS.map(m=>`<button type="button" class="marca-op ${elegida===m.id?'on':''}" data-id="${m.id}">${badge(m)}<span>${m.nombre}</span></button>`).join('')}
   </div>`;
 }
@@ -523,19 +598,30 @@ function enPesosTxt(monto, moneda){
 function iconoSuscripcion(s){
   const t = ' ' + String(s.nombre||'').toLowerCase() + ' ';
   const m = SERVICIOS.find(x => x.buscar.some(p => p.length<=3 ? t.includes(' '+p+' ') : t.includes(p))) || marcaDe('', s.nombre);
-  return m ? badge(m) : `<div class="ico">${/gym|gimnasio/i.test(s.nombre)?'🏋️':'🔁'}</div>`;
+  return m ? badge(m) : `<div class="ico">${ic(/gym|gimnasio/i.test(s.nombre)?'gym':'repetir')}</div>`;
 }
-function pagadaEsteMes(s){ return s.ultimoPago===mesActual(); }
+// Cada cuántos meses se paga (1 = todos los meses, 12 = una vez por año)
+const FRECUENCIAS = [[1,'Mes'],[2,'2 meses'],[3,'3 meses'],[6,'6 meses'],[12,'Año']];
+function cada(s){ return s.cada||1; }
+function textoCada(s){ const n=cada(s); return n===1 ? 'por mes' : n===12 ? 'por año' : `cada ${n} meses`; }
+function mesesEntre(a, b){ const [ay,am]=a.split('-').map(Number), [by,bm]=b.split('-').map(Number); return (by-ay)*12 + (bm-am); }
+// Ya está pagada en el período actual (por ejemplo: la anual se pagó hace 3 meses)
+function pagadaPeriodo(s){ return !!s.ultimoPago && mesesEntre(s.ultimoPago, mesActual()) < cada(s); }
+// Le toca este mes: no está pagada todavía, o se pagó justo este mes
+function venceEsteMes(s){ return !pagadaPeriodo(s) || s.ultimoPago===mesActual(); }
+function proximoPago(s){ return s.ultimoPago ? moverMes(s.ultimoPago, cada(s)) : mesActual(); }
 // Total de mensualidades pasado a pesos (si falta el dólar, muestra los dólares aparte)
 function mensualEnPesos(){
   const ars = totalMensual('ARS'), usd = totalMensual('USD'), usdP = aPesos(usd,'USD');
-  if(!usd) return plata(ars);
-  if(usdP==null) return [ars?plata(ars):'', plata(usd,'USD')].filter(Boolean).join(' + ');
-  return `${plata(Math.round(ars+usdP))} <span class="s">(incluye ${plata(usd,'USD')})</span>`;
+  if(!usd) return {total:plata(Math.round(ars)), detalle:''};
+  if(usdP==null) return {total:[ars?plata(Math.round(ars)):'', plata(usd,'USD')].filter(Boolean).join(' + '), detalle:''};
+  return {total:plata(Math.round(ars+usdP)), detalle:`Incluye ${plata(usd,'USD')}`};
 }
-function totalMensual(moneda){ return state.suscripciones.filter(s=>s.moneda===moneda).reduce((a,s)=>a+s.monto,0); }
+function totalMensual(moneda){ return state.suscripciones.filter(s=>s.moneda===moneda).reduce((a,s)=>a+s.monto/cada(s),0); }
+// Lo que hay que pagar de mensualidades ESTE mes
+function aPagarMensualidades(moneda){ return state.suscripciones.filter(s=>s.moneda===moneda && venceEsteMes(s)).reduce((a,s)=>a+s.monto,0); }
 function nombreExchange(){ return EXCHANGES_USDT.find(e=>e.id===state.usdt.exchange)?.nombre || state.usdt.exchange; }
-function iconoMoneda(m){ return m==='USD'?'💵' : m==='USDT'?'🪙' : '👛'; }
+function iconoMoneda(m){ return m==='USD'?'dolar' : m==='USDT'?'usdt' : 'billetera'; }
 function nombreMoneda(m){ return m==='USD'?'Dólares' : m==='USDT'?'USDT' : 'Pesos'; }
 function hayUSDT(){ return state.billeteras.some(b=>b.moneda==='USDT') || state.inversiones.some(i=>i.moneda==='USDT'); }
 
@@ -544,7 +630,7 @@ function hayUSDT(){ return state.billeteras.some(b=>b.moneda==='USDT') || state.
 // ============================================================
 function render(){
   if(!state.usuario){ renderBienvenida(); return; }
-  $('#nav').style.display='flex';
+  $('#nav').style.display='flex'; $('#difuminado').style.display='block';
   $('#fab').style.display = (vista==='ajustes') ? 'none' : 'grid';
   renderNav();
   const vistas = {inicio:vInicio, gastos:vGastos, cuotas:vCuotas, inversiones:vInversiones, ajustes:vAjustes};
@@ -554,37 +640,37 @@ function render(){
 
 function renderNav(){
   const tabs = [
-    ['inicio','🏠','Inicio'],
-    ['gastos','🧾','Gastos'],
-    ['cuotas','💳','Cuotas'],
-    ['inversiones','📈','Inversión'],
-    ['ajustes','⚙️','Ajustes'],
+    ['inicio','casa','Inicio'],
+    ['gastos','recibo','Gastos'],
+    ['cuotas','tarjeta','Cuotas'],
+    ['inversiones','grafico','Inversión'],
+    ['ajustes','ajustes','Ajustes'],
   ];
-  $('#nav').innerHTML = tabs.map(([id,ic,txt]) =>
-    `<button class="${vista===id?'on':''}" onclick="irA('${id}')"><span>${ic}</span>${txt}</button>`).join('');
+  $('#nav').innerHTML = tabs.map(([id,icono,txt]) =>
+    `<button class="${vista===id?'on':''}" onclick="irA('${id}')">${ic(icono)}${txt}</button>`).join('');
 }
 function irA(v){ vista=v; $('#fab').classList.remove('escondido'); render(); }
 
 // ----- Bienvenida (elegir nombre de usuario) -----
 let emojiElegido = '😎';
 function renderBienvenida(){
-  $('#nav').style.display='none'; $('#fab').style.display='none';
+  $('#nav').style.display='none'; $('#fab').style.display='none'; $('#difuminado').style.display='none';
   $('#main').innerHTML = `
     <div class="welcome">
       <div class="logo-bienvenida">${logoSello('bv')}</div>
-      <h1>¡Hola! 👋</h1>
-      <p class="sub">Esta es tu app de finanzas. Todo queda guardado en tu celu, nadie más lo ve.</p>
+      <h1>¡Hola!</h1>
+      <p class="sub">Esta es Cuentas Claras, tu app para llevar la plata en orden. Todo queda guardado en tu celu, nadie más lo ve.</p>
       <label style="text-align:left">¿Cómo te llamamos?</label>
       <input id="wNombre" placeholder="Tu nombre o apodo" maxlength="20" autocomplete="off">
       <label style="text-align:left">Elegí tu avatar</label>
       <div class="emojis">${EMOJIS_AVATAR.map(e=>`<button class="${e===emojiElegido?'on':''}" onclick="elegirEmoji('${e}')">${e}</button>`).join('')}</div>
-      <div class="actions"><button class="btn" onclick="crearUsuario()">Arrancar 🚀</button></div>
+      <div class="actions"><button class="btn" onclick="crearUsuario()">Arrancar</button></div>
     </div>`;
 }
 function elegirEmoji(e){ const n=$('#wNombre')?.value; emojiElegido=e; renderBienvenida(); if(n) $('#wNombre').value=n; }
 function crearUsuario(){
   const nombre = $('#wNombre').value.trim();
-  if(!nombre){ toast('Poné un nombre 🙂'); return; }
+  if(!nombre){ toast('Poné un nombre'); return; }
   state.usuario = {nombre, emoji:emojiElegido};
   if(state.billeteras.length===0){
     state.billeteras.push({id:uid(), nombre:'Efectivo', moneda:'ARS', saldoInicial:0});
@@ -606,8 +692,8 @@ function vInicio(){
 
   // Cuotas que todavía debo (activas)
   const activas = state.deudas.filter(d=>d.direccion==='debo' && d.cuotasPagadas < d.cuotasTotales);
-  const cuotasMesARS = activas.filter(d=>d.moneda==='ARS').reduce((a,d)=>a+d.montoCuota,0) + totalMensual('ARS');
-  const cuotasMesUSD = activas.filter(d=>d.moneda==='USD').reduce((a,d)=>a+d.montoCuota,0) + totalMensual('USD');
+  const cuotasMesARS = activas.filter(d=>d.moneda==='ARS').reduce((a,d)=>a+d.montoCuota,0) + aPagarMensualidades('ARS');
+  const cuotasMesUSD = activas.filter(d=>d.moneda==='USD').reduce((a,d)=>a+d.montoCuota,0) + aPagarMensualidades('USD');
 
   const cuotasMesUSDPesos = aPesos(cuotasMesUSD,'USD');
 
@@ -632,9 +718,9 @@ function vInicio(){
   // Cuotas y mensualidades sin pagar este mes, juntas en una sola lista
   const proximos = [
     ...activas.map(d=>({dia:d.diaVencimiento||0, monto:d.montoCuota, moneda:d.moneda, nombre:d.descripcion,
-      ico: d.clase==='tarjeta'?miniTarjeta(d):'<div class="ico">🤝</div>', detalle:`cuota ${d.cuotasPagadas+1} de ${d.cuotasTotales}`})),
-    ...state.suscripciones.filter(su=>!pagadaEsteMes(su)).map(su=>({dia:su.dia||0, monto:su.monto, moneda:su.moneda, nombre:su.nombre,
-      ico: iconoSuscripcion(su), detalle:'mensualidad'})),
+      ico: d.clase==='tarjeta'?miniTarjeta(d):`<div class="ico">${ic('personas')}</div>`, detalle:`Cuota ${d.cuotasPagadas+1} de ${d.cuotasTotales}`})),
+    ...state.suscripciones.filter(su=>!pagadaPeriodo(su)).map(su=>({dia:su.dia||0, monto:su.monto, moneda:su.moneda, nombre:su.nombre,
+      ico: iconoSuscripcion(su), detalle: cada(su)===1 ? 'Mensualidad' : `Se paga ${textoCada(su)}`})),
   ].sort((a,b)=>((a.dia-hoy+31)%31)-((b.dia-hoy+31)%31)).slice(0,4);
 
   return `
@@ -656,13 +742,13 @@ function vInicio(){
 
     <div class="grid2">
       <div class="card" onclick="irA('cuotas')">
-        <div class="label">💳 A pagar este mes</div>
+        <div class="label con-ico">${ici('tarjeta')} A pagar este mes</div>
         ${cuotasMesUSD && cuotasMesUSDPesos!=null
           ? `<div class="mid">${plata(Math.round(cuotasMesARS+cuotasMesUSDPesos))}</div><div class="s">incluye ${plata(cuotasMesUSD,'USD')}</div>`
           : `<div class="mid">${plata(cuotasMesARS)}</div>${cuotasMesUSD?`<div class="s">+ ${plata(cuotasMesUSD,'USD')}</div>`:''}`}
       </div>
       <div class="card">
-        <div class="label">💰 Total</div>
+        <div class="label con-ico">${ici('billetera')} Total</div>
         <div class="mid ${totalPesos<0?'neg':''}">${plata(Math.round(totalPesos))}</div>
         <div class="s">${sinCotizar.length ? '+ '+sinCotizar.join(' + ') : `en ${state.billeteras.length} billetera${state.billeteras.length===1?'':'s'}`}</div>
       </div>
@@ -677,7 +763,7 @@ function vInicio(){
         return `<div class="item" onclick="formBilletera('${b.id}')">
           ${iconoBilletera(b)}
           <div class="grow"><div class="t">${esc(b.nombre)}</div><div class="s">${nombreMoneda(b.moneda)}${b.tna?` · ${String(b.tna).replace('.',',')}% TNA`:''}</div>
-            ${r?`<div class="rinde">📈 ≈ +${plata(r.dia,b.moneda)}/día · +${plata(r.mes,b.moneda)}/mes</div>`:''}</div>
+            ${r?`<div class="rinde">Rinde ≈ ${plata(r.dia,b.moneda)} por día</div><div class="rinde">≈ ${plata(Math.round(r.mes),b.moneda)} por mes</div>`:''}</div>
           <div style="text-align:right"><div class="amt ${s<0?'neg':''}">${plata(s,b.moneda)}</div>
             ${enPesos!=null?`<div class="s">≈ ${plata(Math.round(enPesos))}</div>`:''}</div></div>`;
       }).join('') || `<div class="empty">Todavía no cargaste billeteras</div>`}
@@ -691,7 +777,7 @@ function vInicio(){
         <div class="item" onclick="irA('cuotas')">
           ${p.ico}
           <div class="grow"><div class="t">${esc(p.nombre)}</div>
-            <div class="s">${p.dia?`Día ${p.dia} · `:''}${p.detalle}</div></div>
+            <div class="s">${p.detalle}</div>${p.dia?`<div class="s">Vence el día ${p.dia}</div>`:''}</div>
           <div style="text-align:right"><div class="amt">${plata(p.monto,p.moneda)}</div>${enPesosTxt(p.monto,p.moneda)?`<div class="s">${enPesosTxt(p.monto,p.moneda)}</div>`:''}</div>
         </div>`).join('')}
     </div>`:''}
@@ -701,16 +787,16 @@ function vInicio(){
       ${cats.length ? cats.map(([id,val])=>{
         const c=categoria(id);
         return `<div style="margin:10px 0">
-          <div class="row"><span>${c.emoji} ${c.nombre}</span><b>${plata(val)}</b></div>
+          <div class="row"><span class="con-ico">${ici(c.ic)} ${c.nombre}</span><b>${plata(val)}</b></div>
           <div class="bar"><i style="width:${Math.max(4,val/maxCat*100)}%"></i></div></div>`;
       }).join('') : `<div class="empty">Cargá tu primer gasto con el botón <b>+</b></div>`}
     </div>
 
     <div class="row" style="margin:6px 4px 20px">
-      <span class="s">💵 Dólar ${TIPOS_DOLAR.find(t=>t.id===state.dolar.tipo)?.nombre}: ${state.dolar.valor?plata(state.dolar.valor):'sin dato'}${state.dolar.manual?' (manual)':''}</span>
-      <button class="pill" onclick="actualizarDolar(true);actualizarUSDT(true)">↻ Actualizar</button>
+      <span class="s">Dólar ${TIPOS_DOLAR.find(t=>t.id===state.dolar.tipo)?.nombre}: ${state.dolar.valor?plata(state.dolar.valor):'sin dato'}${state.dolar.manual?' (manual)':''}</span>
+      <button class="pill sin-sello" onclick="actualizarDolar(true);actualizarUSDT(true)">${ici('actualizar')} Actualizar</button>
     </div>
-    ${hayUSDT()?`<div class="s" style="margin:-12px 4px 20px">🪙 USDT venta ${nombreExchange()}: ${state.usdt.valor?plata(state.usdt.valor):'sin dato'}${state.usdt.manual?' (manual)':''}</div>`:''}`;
+    ${hayUSDT()?`<div class="s" style="margin:-12px 4px 20px">USDT venta ${nombreExchange()}: ${state.usdt.valor?plata(state.usdt.valor):'sin dato'}${state.usdt.manual?' (manual)':''}</div>`:''}`;
 }
 
 // ----- Gráfico: gastos de los últimos 6 meses -----
@@ -767,7 +853,7 @@ function graficoMeses(){
   const leyenda = abierto && abierto.total ? `
     <div class="label" style="margin-top:16px">En qué se fue la plata en ${nombreMes(abierto.ym)}</div>
     <div class="leyenda">${Object.entries(abierto.cats).sort((a,b)=>b[1]-a[1]).map(([id,v])=>{ const c=categoria(id);
-      return `<div class="row"><span><i class="punto" style="background:${colorDe(id)}"></i>${c.emoji} ${c.nombre}</span>
+      return `<div class="row"><span><i class="punto" style="background:${colorDe(id)}"></i>${ici(c.ic)} ${c.nombre}</span>
         <span><b>${plata(Math.round(v))}</b> <span class="s">${Math.round(v/abierto.total*100)}%</span></span></div>`;}).join('')}</div>`
     : `<p class="s" style="text-align:center;margin:12px 0 0">Tocá un mes para ver en qué se fue la plata.</p>`;
 
@@ -813,7 +899,7 @@ function vGastos(){
       <div class="card" style="padding:4px 16px">
         ${movs.map(m=>{ const c=categoria(m.categoria), b=billetera(m.billeteraId);
           return `<div class="item" onclick="formMovimiento('${m.id}')">
-            <div class="ico">${c.emoji}</div>
+            <div class="ico">${ic(c.ic)}</div>
             <div class="grow"><div class="t">${esc(m.nota||c.nombre)}</div><div class="s">${c.nombre} · ${esc(b?b.nombre:'—')}</div></div>
             <div class="amt ${m.tipo==='ingreso'?'pos':''}">${m.tipo==='ingreso'?'+':'-'}${plata(m.monto,monedaDe(m))}</div></div>`;
         }).join('')}
@@ -835,15 +921,15 @@ function vCuotas(){
     return `<div class="card">
       <div class="row" onclick="formDeuda('${d.id}')">
         <div class="row" style="justify-content:flex-start;gap:12px;min-width:0">
-          ${d.clase==='tarjeta'?miniTarjeta(d):'<div class="ico">🤝</div>'}
-          <div style="min-width:0"><div class="t">${esc(d.descripcion)}</div><div class="s">${[d.red, d.quien].filter(Boolean).map(esc).join(' · ')}${d.diaVencimiento?` · vence el ${d.diaVencimiento}`:''}</div></div>
+          ${d.clase==='tarjeta'?miniTarjeta(d):`<div class="ico">${ic('personas')}</div>`}
+          <div style="min-width:0"><div class="t">${esc(d.descripcion)}</div>${[d.red, d.quien].filter(Boolean).length?`<div class="s">${[d.red, d.quien].filter(Boolean).map(esc).join(' · ')}</div>`:''}${d.diaVencimiento?`<div class="s">Vence el día ${d.diaVencimiento}</div>`:''}</div>
         </div>
         <div class="amt">${plata(d.montoCuota,d.moneda)}</div>
       </div>
       <div class="bar" style="margin-top:12px"><i style="width:${pct}%"></i></div>
       <div class="row" style="margin-top:8px">
-        <span class="s">${d.cuotasPagadas} de ${d.cuotasTotales} pagadas${resta?` · faltan ${plata(resta*d.montoCuota,d.moneda)}`:''}</span>
-        ${resta ? `<button class="btn sm" onclick="pagarCuota('${d.id}')">${filtroDeuda==='debo'?'Pagar cuota':'Me pagó'}</button>` : `<span class="pill">✅ Terminada</span>`}
+        <div><div class="s">${d.cuotasPagadas} de ${d.cuotasTotales} pagadas</div>${resta?`<div class="s">Faltan ${plata(resta*d.montoCuota,d.moneda)}</div>`:''}</div>
+        ${resta ? `<button class="btn sm" onclick="pagarCuota('${d.id}')">${filtroDeuda==='debo'?'Pagar cuota':'Me pagó'}</button>` : `<span class="pill">${ici('tilde')}Terminada</span>`}
       </div>
     </div>`;
   };
@@ -859,20 +945,23 @@ function vCuotas(){
       <div class="label">${filtroDeuda==='debo'?'Te falta pagar':'Te falta cobrar'}</div>
       <div class="big">${plata(restaARS)}</div>
       ${restaUSD?`<div class="s">+ ${plata(restaUSD,'USD')}</div>`:''}
-      ${filtroDeuda==='debo' && state.suscripciones.length ? `<div class="s" style="margin-top:8px">+ mensualidades: <b style="color:var(--txt)">${mensualEnPesos()}</b> por mes</div>`:''}
+      ${filtroDeuda==='debo' && state.suscripciones.length ? (m=>`<div class="s" style="margin-top:10px">Mensualidades: <b style="color:var(--txt)">${m.total}</b> por mes</div>${m.detalle?`<div class="s">${m.detalle}</div>`:''}`)(mensualEnPesos()):''}
     </div>
     ${filtroDeuda==='debo' && state.suscripciones.length ? `
-    <h2>🔁 Mensualidades</h2>
+    <h2 class="con-ico">${ici('repetir')} Mensualidades</h2>
     <div class="card" style="padding:4px 16px">
       ${state.suscripciones.slice().sort((a,b)=>(a.dia||32)-(b.dia||32)).map(su=>{ const b=billetera(su.billeteraId);
         return `<div class="item">
           <div onclick="formSuscripcion('${su.id}')">${iconoSuscripcion(su)}</div>
           <div class="grow" onclick="formSuscripcion('${su.id}')"><div class="t">${esc(su.nombre)}</div>
-            <div class="s">${plata(su.monto,su.moneda)} por mes${su.moneda!=='ARS'&&enPesosTxt(su.monto,su.moneda)?` (${enPesosTxt(su.monto,su.moneda)})`:''}${su.dia?` · día ${su.dia}`:''}${b?` · ${esc(b.nombre)}`:''}</div></div>
-          ${pagadaEsteMes(su) ? `<span class="pill">✅ Pagado</span>` : `<button class="btn sm" onclick="pagarMensualidad('${su.id}')">Pagar</button>`}
+            <div class="s">${plata(su.monto,su.moneda)} ${textoCada(su)}</div>
+            ${su.moneda!=='ARS'&&enPesosTxt(su.monto,su.moneda)?`<div class="s">${enPesosTxt(su.monto,su.moneda)}</div>`:''}
+            ${pagadaPeriodo(su) && cada(su)>1 ? `<div class="s">Próximo pago: ${nombreMes(proximoPago(su))}</div>` : su.dia?`<div class="s">Vence el día ${su.dia}</div>`:''}
+            ${b?`<div class="s">Con ${esc(b.nombre)}</div>`:''}</div>
+          ${pagadaPeriodo(su) ? `<span class="pill">${ici('tilde')}Pagado</span>` : `<button class="btn sm" onclick="pagarMensualidad('${su.id}')">Pagar</button>`}
         </div>`;}).join('')}
     </div>
-    ${activas.length?'<h2>💳 Cuotas</h2>':''}`:''}
+    ${activas.length?`<h2 class="con-ico">${ici('tarjeta')} Cuotas</h2>`:''}`:''}
     ${activas.map(tarjeta).join('') || (filtroDeuda==='debo' && state.suscripciones.length ? '' : `<div class="card empty">${filtroDeuda==='debo'?'No tenés cuotas pendientes 🎉':'Nadie te debe nada'}</div>`)}
     ${terminadas.length?`<h2>Terminadas</h2>${terminadas.map(tarjeta).join('')}`:''}`;
 }
@@ -885,7 +974,9 @@ function hojaPago({titulo, detalle, monto, moneda, preferida, pregunta, alConfir
   const elegida = billes.find(b=>b.id===preferida && b.moneda===moneda) || billes[0];
   abrirSheet(`
     <h3>${titulo}</h3>
-    <p class="sub">${detalle} · ${plata(monto,moneda)}${moneda!=='ARS'&&aPesos(monto,moneda)!=null?` (${enPesosTxt(monto,moneda)})`:''}</p>
+    <p class="sub" style="margin-bottom:2px">${detalle}</p>
+    <div class="mid">${plata(monto,moneda)}</div>
+    ${moneda!=='ARS'&&aPesos(monto,moneda)!=null?`<div class="s">${enPesosTxt(monto,moneda)} al dólar ${nombreDolar()} de hoy</div>`:''}
     <label>${pregunta}</label>
     ${chipsBilleteras('pagoBille', elegida?.id, billes)}
     <div class="conv" id="pagoConv"></div>
@@ -895,8 +986,8 @@ function hojaPago({titulo, detalle, monto, moneda, preferida, pregunta, alConfir
     const b = billetera($('#pagoBille').dataset.v); if(!b) return;
     const m = montoEn(b.id);
     $('#pagoConv').innerHTML = b.moneda===moneda ? `Se descuenta ${plata(monto,moneda)} de ${esc(b.nombre)}.`
-      : m==null ? `⚠️ Falta la cotización para pasar a ${nombreMoneda(b.moneda).toLowerCase()}. Actualizala en Ajustes.`
-      : `Se descuentan <b style="color:var(--txt)">${plata(Math.round(m*100)/100,b.moneda)}</b> de ${esc(b.nombre)} (dólar ${nombreDolar()} de hoy).`;
+      : m==null ? `Falta la cotización para pasar a ${nombreMoneda(b.moneda).toLowerCase()}. Actualizala en Ajustes.`
+      : `Se descuentan <b style="color:var(--txt)">${plata(Math.round(m*100)/100,b.moneda)}</b> de ${esc(b.nombre)}.`;
   };
   $('#pagoBille').addEventListener('cambio', mostrar); mostrar();
   $('#pagoOk').onclick = () => {
@@ -919,7 +1010,7 @@ function pagarCuota(id){
       state.movimientos.push({id:uid(), tipo: debo?'gasto':'ingreso', monto, billeteraId:b.id,
         categoria: debo?'cuotas':'otros_i', fecha:hoyISO(), nota:`${d.descripcion} (${d.cuotasPagadas}/${d.cuotasTotales})${conv}`});
       save(); cerrarSheet(); render();
-      toast(d.cuotasPagadas>=d.cuotasTotales ? '🎉 ¡Terminaste de pagarla!' : '✅ Cuota registrada');
+      toast(d.cuotasPagadas>=d.cuotasTotales ? '¡Terminaste de pagarla!' : 'Cuota registrada');
     }
   });
 }
@@ -934,7 +1025,7 @@ function pagarMensualidad(id){
       const conv = b.moneda!==su.moneda ? ` · ${plata(su.monto,su.moneda)}` : '';
       state.movimientos.push({id:uid(), tipo:'gasto', monto, billeteraId:b.id, categoria:'subs', fecha:hoyISO(),
         nota:`${su.nombre} (${nombreMes(mesActual())})${conv}`});
-      save(); cerrarSheet(); render(); toast('✅ Mensualidad pagada');
+      save(); cerrarSheet(); render(); toast('Mensualidad pagada');
     }
   });
 }
@@ -956,13 +1047,13 @@ function vInversiones(){
       <div class="card"><div class="label">En pesos</div><div class="mid">${plata(ars.act)}</div><div class="s">${ars.inv?gan(ars.inv,ars.act):'—'}</div></div>
       <div class="card"><div class="label">En dólares</div><div class="mid">${plata(usd.act,'USD')}</div><div class="s">${usd.inv?gan(usd.inv,usd.act):'—'}</div></div>
     </div>
-    ${usdt.act?`<div class="card"><div class="label">🪙 En USDT</div><div class="mid">${plata(usdt.act,'USDT')}</div>
+    ${usdt.act?`<div class="card"><div class="label con-ico">${ici('usdt')} En USDT</div><div class="mid">${plata(usdt.act,'USDT')}</div>
       <div class="s">${usdtPesos!=null?`≈ ${plata(Math.round(usdtPesos))} vendiendo en ${nombreExchange()}`:'Sin cotización todavía'}</div></div>`:''}
     <div class="card" style="padding:4px 16px">
       ${state.inversiones.map(i=>`
         <div class="item" onclick="formInversion('${i.id}')">
-          <div class="ico">📈</div>
-          <div class="grow"><div class="t">${esc(i.nombre)}</div><div class="s">${esc(i.tipo)} · puse ${plata(i.invertido,i.moneda)}</div></div>
+          <div class="ico">${ic('grafico')}</div>
+          <div class="grow"><div class="t">${esc(i.nombre)}</div><div class="s">${esc(i.tipo)}</div><div class="s">Pusiste ${plata(i.invertido,i.moneda)}</div></div>
           <div style="text-align:right"><div class="amt">${plata(i.valorActual,i.moneda)}</div><div class="s">${gan(i.invertido,i.valorActual)}</div></div>
         </div>`).join('') || `<div class="empty">Todavía no cargaste inversiones</div>`}
     </div>
@@ -982,14 +1073,14 @@ function vAjustes(){
       </div>
     </div>
 
-    <h2>🌗 Apariencia</h2>
+    <h2 class="con-ico">${ici('auto')} Apariencia</h2>
     <div class="seg">
-      ${[['auto','Automático'],['claro','☀️ Claro'],['oscuro','🌙 Oscuro']].map(([id,txt])=>
+      ${[['auto',ici('auto')+' Auto'],['claro',ici('sol')+' Claro'],['oscuro',ici('luna')+' Oscuro']].map(([id,txt])=>
         `<button class="${(state.tema||'auto')===id?'on':''}" onclick="cambiarTema('${id}')">${txt}</button>`).join('')}
     </div>
     <p class="s" style="margin:8px 2px 0">Automático usa el modo del celu: claro de día, oscuro si lo tenés en modo noche.</p>
 
-    <h2>💵 Cotización del dólar</h2>
+    <h2 class="con-ico">${ici('dolar')} Cotización del dólar</h2>
     <div class="card">
       <label style="margin-top:0">Qué dólar usar para convertir</label>
       <div class="chips">${TIPOS_DOLAR.map(t=>`<button class="chip ${state.dolar.tipo===t.id&&!state.dolar.manual?'on':''}" onclick="cambiarDolar('${t.id}')">${t.nombre}</button>`).join('')}</div>
@@ -998,7 +1089,7 @@ function vAjustes(){
       <p class="s" style="margin-bottom:0">Actual: <b>${state.dolar.valor?plata(state.dolar.valor):'sin dato'}</b>${state.dolar.actualizado?` · ${new Date(state.dolar.actualizado).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}`:''}${state.dolar.manual?' · manual':''}</p>
     </div>
 
-    <h2>🪙 Precio del USDT</h2>
+    <h2 class="con-ico">${ici('usdt')} Precio del USDT</h2>
     <div class="card">
       <label style="margin-top:0">Precio de venta de qué exchange</label>
       <div class="chips">${EXCHANGES_USDT.map(e=>`<button class="chip ${state.usdt.exchange===e.id&&!state.usdt.manual?'on':''}" onclick="cambiarExchange('${e.id}')">${e.nombre}</button>`).join('')}</div>
@@ -1007,33 +1098,33 @@ function vAjustes(){
       <p class="s" style="margin-bottom:0">Actual: <b>${state.usdt.valor?plata(state.usdt.valor):'sin dato'}</b>${state.usdt.actualizado?` · ${new Date(state.usdt.actualizado).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}`:''}${state.usdt.manual?' · manual':''}</p>
     </div>
 
-    <h2>👛 Billeteras</h2>
+    <h2 class="con-ico">${ici('billetera')} Billeteras</h2>
     <div class="card" style="padding:4px 16px">
       ${state.billeteras.map(b=>`<div class="item" onclick="formBilletera('${b.id}')">${iconoBilletera(b)}<div class="grow"><div class="t">${esc(b.nombre)}</div><div class="s">${nombreMoneda(b.moneda)}</div></div><span class="s">›</span></div>`).join('')}
       <div style="padding:10px 0"><button class="btn sec sm" onclick="formBilletera()">+ Agregar billetera</button></div>
     </div>
 
-    <h2>💾 Respaldo</h2>
+    <h2 class="con-ico">${ici('bajar')} Respaldo</h2>
     <div class="card">
       <p class="s" style="margin-top:0">Tus datos viven solo en este celular. Bajate un respaldo de vez en cuando por si cambiás de teléfono.</p>
       <div class="actions" style="margin-top:10px">
-        <button class="btn sec" onclick="exportar()">⬇️ Descargar respaldo</button>
-        <button class="btn sec" onclick="$('#archivoImport').click()">⬆️ Restaurar respaldo</button>
+        <button class="btn sec" onclick="exportar()">${ici('bajar')} Descargar respaldo</button>
+        <button class="btn sec" onclick="$('#archivoImport').click()">${ici('subir')} Restaurar respaldo</button>
         <input type="file" id="archivoImport" accept="application/json,.json" style="display:none" onchange="importar(this)">
         <button class="btn danger" onclick="borrarTodo()">Borrar todos los datos</button>
       </div>
     </div>
-    <div class="pie">${logoSello('aj')}<p class="s">Mis Finanzas · versión ${VERSION_APP}</p></div>`;
+    <div class="pie">${logoSello('aj')}<p class="s">Cuentas Claras · versión ${VERSION_APP}</p></div>`;
 }
 function cambiarExchange(id){ state.usdt.exchange=id; state.usdt.manual=false; save(); render(); actualizarUSDT(true); }
 function usdtManual(){
   const v = num($('#usdtManual').value); if(!v){ toast('Poné un valor'); return; }
-  state.usdt = {...state.usdt, valor:v, manual:true, actualizado:Date.now()}; save(); render(); toast('🪙 Precio guardado');
+  state.usdt = {...state.usdt, valor:v, manual:true, actualizado:Date.now()}; save(); render(); toast('Precio guardado');
 }
 function cambiarDolar(tipo){ state.dolar.tipo=tipo; state.dolar.manual=false; save(); render(); actualizarDolar(true); }
 function dolarManual(){
   const v = num($('#dolarManual').value); if(!v){ toast('Poné un valor'); return; }
-  state.dolar = {...state.dolar, valor:v, manual:true, actualizado:Date.now()}; save(); render(); toast('💵 Cotización guardada');
+  state.dolar = {...state.dolar, valor:v, manual:true, actualizado:Date.now()}; save(); render(); toast('Cotización guardada');
 }
 function formPerfil(){
   emojiElegido = state.usuario.emoji;
@@ -1050,10 +1141,10 @@ function guardarPerfil(){
 }
 function exportar(){
   const blob = new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
-  const nombre = `finanzas-respaldo-${hoyISO()}.json`;
+  const nombre = `cuentas-claras-respaldo-${hoyISO()}.json`;
   const file = new File([blob], nombre, {type:'application/json'});
   if(navigator.canShare && navigator.canShare({files:[file]})){
-    navigator.share({files:[file], title:'Respaldo Mis Finanzas'}).catch(()=>{});
+    navigator.share({files:[file], title:'Respaldo Cuentas Claras'}).catch(()=>{});
   }else{
     const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=nombre; a.click();
   }
@@ -1066,7 +1157,7 @@ function importar(input){
       const data=JSON.parse(r.result);
       if(!data.billeteras) throw 0;
       if(!confirm('Esto reemplaza tus datos actuales por los del respaldo. ¿Seguimos?')) return;
-      state=Object.assign(estadoVacio(),data); save(); render(); toast('✅ Respaldo restaurado');
+      state=Object.assign(estadoVacio(),data); save(); render(); toast('Respaldo restaurado');
     }catch(e){ toast('Ese archivo no es un respaldo válido'); }
   };
   r.readAsText(f);
@@ -1113,7 +1204,7 @@ function formMovimiento(id){
   catMov = m ? m.categoria : (tipoMov==='gasto'?'comida':'laburo');
   const pintar = () => {
     const cats = tipoMov==='gasto'?CATEGORIAS:CATEGORIAS_INGRESO;
-    $('#mCats').innerHTML = cats.map(c=>`<button class="chip ${c.id===catMov?'on':''}" onclick="catMov='${c.id}';this.parentNode.querySelectorAll('.chip').forEach(x=>x.classList.remove('on'));this.classList.add('on')">${c.emoji} ${c.nombre}</button>`).join('');
+    $('#mCats').innerHTML = cats.map(c=>`<button class="chip ${c.id===catMov?'on':''}" onclick="catMov='${c.id}';this.parentNode.querySelectorAll('.chip').forEach(x=>x.classList.remove('on'));this.classList.add('on')">${ici(c.ic)} ${c.nombre}</button>`).join('');
     document.querySelectorAll('#mTipo button').forEach(b=>b.classList.toggle('on', b.dataset.t===tipoMov));
     $('#mBilleLbl').textContent = tipoMov==='gasto' ? '¿De qué billetera sale?' : '¿A qué billetera entra?';
   };
@@ -1146,7 +1237,7 @@ function guardarMovimiento(id){
   const datos = {tipo:tipoMov, monto, billeteraId:$('#mBille').dataset.v, categoria:catMov, nota:$('#mNota').value.trim(), fecha:$('#mFecha').value||hoyISO()};
   if(id){ Object.assign(state.movimientos.find(x=>x.id===id), datos); }
   else state.movimientos.push({id:uid(), ...datos});
-  save(); cerrarSheet(); render(); toast(tipoMov==='gasto'?'💸 Gasto guardado':'💰 Ingreso guardado');
+  save(); cerrarSheet(); render(); toast(tipoMov==='gasto'?'Gasto guardado':'Ingreso guardado');
 }
 
 // ----- Billetera -----
@@ -1188,7 +1279,7 @@ function guardarBilletera(id){
   const datos={nombre, moneda:formBilletera._mon(), saldoInicial:num($('#bSaldo').value),
                tna:num($('#bTna').value)||0, marca:formBilletera._marca()};
   if(id) Object.assign(billetera(id),datos); else state.billeteras.push({id:uid(),...datos});
-  save(); cerrarSheet(); render(); toast('👛 Billetera guardada');
+  save(); cerrarSheet(); render(); toast('Billetera guardada');
 }
 function borrarBilletera(id){
   const usados = state.movimientos.filter(m=>m.billeteraId===id).length;
@@ -1204,7 +1295,7 @@ function formDeuda(id){
   let clase = d?d.clase:'tarjeta', dir = d?d.direccion:filtroDeuda, mon = d?d.moneda:'ARS';
   abrirSheet(`
     <h3>${d?'Editar':'Nueva'} cuota / deuda</h3>
-    <div class="seg" id="dClase"><button data-v="tarjeta">💳 Tarjeta</button><button data-v="persona">🤝 Persona</button>${d?'':'<button data-v="mensual">🔁 Mensual</button>'}</div>
+    <div class="seg" id="dClase"><button data-v="tarjeta">${ici('tarjeta')} Tarjeta</button><button data-v="persona">${ici('personas')} Persona</button>${d?'':`<button data-v="mensual">${ici('repetir')} Mensual</button>`}</div>
     <div id="dDirWrap" style="margin-top:10px"><div class="seg" id="dDir"><button data-v="debo">Yo le debo</button><button data-v="medeben">Me debe</button></div></div>
     <label>¿Qué es?</label>
     <input id="dDesc" placeholder="Ej: Zapatillas, Celular, Préstamo" value="${esc(d?d.descripcion:'')}">
@@ -1263,24 +1354,26 @@ function guardarDeuda(id){
                red: clase==='tarjeta'?red:'', marca: clase==='tarjeta'?marca:''};
   if(id) Object.assign(state.deudas.find(x=>x.id===id),datos); else state.deudas.push({id:uid(),...datos});
   filtroDeuda = dir;
-  save(); cerrarSheet(); render(); toast('💳 Guardado');
+  save(); cerrarSheet(); render(); toast('Guardado');
 }
 
 // ----- Mensualidad (Claude, Netflix, gimnasio...) -----
 function formSuscripcion(id){
   const su = id ? state.suscripciones.find(x=>x.id===id) : null;
-  let mon = su?su.moneda:'ARS';
+  let mon = su?su.moneda:'ARS', frec = su?cada(su):1;
   abrirSheet(`
     <h3>${su?'Editar':'Nueva'} mensualidad</h3>
-    ${su?'':`<div class="seg" id="sClase" style="margin-bottom:4px"><button data-v="tarjeta">💳 Tarjeta</button><button data-v="persona">🤝 Persona</button><button class="on">🔁 Mensual</button></div>`}
+    ${su?'':`<div class="seg" id="sClase" style="margin-bottom:4px"><button data-v="tarjeta">${ici('tarjeta')} Tarjeta</button><button data-v="persona">${ici('personas')} Persona</button><button class="on">${ici('repetir')} Mensual</button></div>`}
     <label>¿Qué es?</label>
     <input id="sNombre" placeholder="Ej: Claude, Netflix, Spotify, Gimnasio" value="${esc(su?su.nombre:'')}">
     <label>Moneda</label>
     <div class="seg" id="sMon"><button data-v="ARS">Pesos</button><button data-v="USD">Dólares</button></div>
     <div class="grid2">
-      <div><label>Monto por mes</label><input id="sMonto" inputmode="decimal" placeholder="0" value="${su?su.monto:''}"></div>
+      <div><label>Monto</label><input id="sMonto" inputmode="decimal" placeholder="0" value="${su?su.monto:''}"></div>
       <div><label>Día de cobro</label><input id="sDia" inputmode="numeric" placeholder="Ej: 5" value="${su&&su.dia?su.dia:''}"></div>
     </div>
+    <label>¿Cada cuánto se paga?</label>
+    <div class="seg seg-chico" id="sCada">${FRECUENCIAS.map(([n,t])=>`<button data-v="${n}">${t}</button>`).join('')}</div>
     <label>¿Con qué la pagás?</label>
     <select id="sBille"></select>
     <div class="actions">
@@ -1295,19 +1388,23 @@ function formSuscripcion(id){
     if(su && billes.some(b=>b.id===su.billeteraId)) $('#sBille').value = su.billeteraId;
   };
   document.querySelectorAll('#sMon button').forEach(x=>x.onclick=()=>{mon=x.dataset.v;pint();});
+  const pintCada=()=>document.querySelectorAll('#sCada button').forEach(x=>x.classList.toggle('on',+x.dataset.v===frec));
+  document.querySelectorAll('#sCada button').forEach(x=>x.onclick=()=>{frec=+x.dataset.v;pintCada();});
+  pintCada();
+  formSuscripcion._cada = ()=>frec;
   document.querySelectorAll('#sClase button[data-v]').forEach(x=>x.onclick=()=>{ formDeuda(); document.querySelector(`#dClase button[data-v="${x.dataset.v}"]`).click(); });
   pint();
   formSuscripcion._mon = ()=>mon;
 }
 function guardarSuscripcion(id){
   const nombre=$('#sNombre').value.trim(); if(!nombre) return toast('¿Qué mensualidad es?');
-  const monto=num($('#sMonto').value); if(monto<=0) return toast('Poné el monto por mes');
+  const monto=num($('#sMonto').value); if(monto<=0) return toast('Poné el monto');
   const dia=Math.min(31,Math.max(0,parseInt($('#sDia').value)||0));
-  const datos={nombre, moneda:formSuscripcion._mon(), monto, dia, billeteraId:$('#sBille').value};
+  const datos={nombre, moneda:formSuscripcion._mon(), monto, dia, cada:formSuscripcion._cada(), billeteraId:$('#sBille').value};
   if(id) Object.assign(state.suscripciones.find(x=>x.id===id),datos);
   else state.suscripciones.push({id:uid(), ultimoPago:null, ...datos});
   filtroDeuda='debo';
-  save(); cerrarSheet(); render(); toast('🔁 Mensualidad guardada');
+  save(); cerrarSheet(); render(); toast('Mensualidad guardada');
 }
 
 // ----- Inversión -----
@@ -1341,7 +1438,7 @@ function guardarInversion(id){
   const valorActual = $('#iAct').value.trim() ? num($('#iAct').value) : invertido;
   const datos={nombre, tipo:$('#iTipo').value, moneda:formInversion._mon(), invertido, valorActual, actualizado:Date.now()};
   if(id) Object.assign(state.inversiones.find(x=>x.id===id),datos); else state.inversiones.push({id:uid(),...datos});
-  save(); cerrarSheet(); render(); toast('📈 Inversión guardada');
+  save(); cerrarSheet(); render(); toast('Inversión guardada');
 }
 
 function borrar(coleccion, id){
@@ -1365,10 +1462,41 @@ function cambiarTema(t){ state.tema=t; save(); aplicarTema(); render(); }
 celuOscuro.addEventListener('change', aplicarTema); // si cambiás el modo del celu con la app abierta
 
 // ============================================================
+//  ANIMACIÓN DE ENTRADA
+//  1) aparece el anillo desde el medio, 2) suben las personitas,
+//  3) las letras se van escribiendo una por una en su lugar, 4) se desvanece.
+//  Tocando la pantalla se saltea.
+// ============================================================
+function mostrarIntro(){
+  const el = $('#intro'); if(!el) return;
+  el.innerHTML = logoSello('in');
+  const reducir = window.matchMedia('(prefers-reduced-motion: reduce)').matches; // si el celu pide menos animaciones
+  // Cada letra pasa a ser un pedacito aparte, invisible al principio y ya en su lugar final
+  const letras = [];
+  el.querySelectorAll('textPath').forEach(tp=>{
+    const texto = tp.textContent; tp.textContent = '';
+    for(const ch of texto){
+      const sp = document.createElementNS('http://www.w3.org/2000/svg','tspan');
+      sp.textContent = ch===' ' ? '\u00A0' : ch;
+      tp.appendChild(sp); letras.push(sp);
+    }
+  });
+  const inicio = reducir ? 0 : 950, paso = reducir ? 0 : 34;
+  letras.forEach((sp,i)=>setTimeout(()=>sp.classList.add('ya'), inicio + i*paso));
+  const fin = inicio + letras.length*paso;
+  el.style.setProperty('--fin', fin+'ms');
+  let cerrado = false;
+  const cerrar = ()=>{ if(cerrado) return; cerrado = true; el.classList.add('fuera'); setTimeout(()=>el.remove(), 500); };
+  setTimeout(cerrar, fin + (reducir ? 500 : 700));
+  el.addEventListener('click', cerrar);
+}
+
+// ============================================================
 //  ARRANQUE
 // ============================================================
 aplicarTema();
 render();
+mostrarIntro();
 
 // El botón + se esconde al bajar por la pantalla (para no tapar nada) y vuelve al subir
 let ultimoScroll = 0;

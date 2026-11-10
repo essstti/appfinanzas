@@ -1,7 +1,7 @@
 {
-  "name": "Mis Finanzas",
-  "short_name": "Finanzas",
-  "description": "Gastos, cuotas e inversiones. Todo guardado en tu celular.",
+  "name": "Cuentas Claras",
+  "short_name": "Cuentas Claras",
+  "description": "Cuentas claras conservan la amistad. Gastos, cuotas e inversiones, todo guardado en tu celular.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
