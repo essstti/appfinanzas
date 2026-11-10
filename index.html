@@ -24,7 +24,7 @@
     font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;
     font-size:16px;-webkit-font-smoothing:antialiased}
   body{padding-top:env(safe-area-inset-top);padding-bottom:calc(84px + env(safe-area-inset-bottom))}
-  main{max-width:560px;margin:0 auto;padding:16px 16px 80px}
+  main{max-width:560px;margin:0 auto;padding:16px 16px 96px}
   h1{font-size:26px;margin:8px 0 2px;letter-spacing:-.5px}
   h2{font-size:18px;margin:22px 0 10px}
   .sub{color:var(--muted);font-size:14px;margin:0 0 14px}
@@ -101,6 +101,23 @@
   .mc-chip{position:absolute;left:6px;top:16px;width:10px;height:8px;border-radius:2px;background:linear-gradient(135deg,#f6d77a,#c9a240)}
   .mc-red{position:absolute;right:5px;bottom:3px;font-size:8px;font-weight:800;font-style:italic;text-transform:uppercase;opacity:.95}
   .rinde{color:var(--green);font-size:12px;margin-top:2px}
+  /* botón X para cerrar las hojas */
+  .sheet{position:relative}
+  .cerrar{position:absolute;top:14px;right:14px;width:34px;height:34px;border-radius:50%;background:var(--card2);color:var(--muted);font-size:16px;display:grid;place-items:center}
+  .sheet h3{padding-right:44px}
+  /* gráfico de meses */
+  .graf{display:flex;align-items:flex-end;gap:8px;height:190px;padding-top:22px}
+  .graf-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;min-width:0}
+  .graf-val{font-size:11px;color:var(--muted);margin-bottom:4px;white-space:nowrap}
+  .graf-col.on .graf-val{color:var(--txt);font-weight:700}
+  .graf-barra{width:100%;max-width:38px;display:flex;flex-direction:column-reverse;gap:2px;border-radius:4px 4px 0 0;overflow:hidden;min-height:2px}
+  .graf-barra i{display:block;width:100%;background:#3a4150}
+  .graf-col.on .graf-barra i{background:var(--accent)}
+  .graf-mes{font-size:12px;color:var(--muted);margin-top:6px;padding-top:6px;border-top:1px solid var(--line);width:100%;text-align:center}
+  .graf-col.on .graf-mes{color:var(--txt);font-weight:700}
+  .leyenda{display:grid;gap:8px;margin-top:14px}
+  .leyenda .row span:first-child{display:flex;align-items:center;gap:8px;min-width:0}
+  .punto{width:10px;height:10px;border-radius:3px;flex:none}
   .avatar{width:44px;height:44px;border-radius:14px;background:var(--card2);display:grid;place-items:center;font-size:24px}
 </style>
 </head>
@@ -161,6 +178,7 @@ function estadoVacio(){
     movimientos: [],                  // {id, tipo:'gasto'|'ingreso', monto, billeteraId, categoria, fecha, nota}
     deudas: [],                       // {id, clase:'tarjeta'|'persona', direccion:'debo'|'medeben', descripcion, quien, moneda, montoCuota, cuotasTotales, cuotasPagadas, diaVencimiento}
     inversiones: [],                  // {id, nombre, tipo, moneda, invertido, valorActual, actualizado}
+    suscripciones: [],                // mensualidades: {id, nombre, moneda, monto, dia, billeteraId, ultimoPago:'2026-11'}
     dolar: {tipo:'blue', valor:null, actualizado:null, manual:false},
     usdt:  {exchange:'lemoncash', valor:null, actualizado:null, manual:false}, // precio de VENTA de 1 USDT en pesos
   };
@@ -324,6 +342,21 @@ const MARCAS = [
   {id:'credicoop', nombre:'Credicoop',    ini:'CC',   bg:'#00965e', fg:'#fff', buscar:['credicoop']},
   {id:'cordoba',   nombre:'Bancor',       ini:'BC',   bg:'#00548c', fg:'#fff', buscar:['bancor','cordoba','córdoba']},
 ];
+// Servicios típicos de mensualidad (para el ícono de color)
+const SERVICIOS = [
+  {id:'claude',    nombre:'Claude',      ini:'C',   bg:'#d97757', fg:'#fff', buscar:['claude']},
+  {id:'chatgpt',   nombre:'ChatGPT',     ini:'GPT', bg:'#10a37f', fg:'#fff', buscar:['chatgpt','openai']},
+  {id:'netflix',   nombre:'Netflix',     ini:'N',   bg:'#e50914', fg:'#fff', buscar:['netflix']},
+  {id:'spotify',   nombre:'Spotify',     ini:'S',   bg:'#1db954', fg:'#0b1f12', buscar:['spotify']},
+  {id:'youtube',   nombre:'YouTube',     ini:'YT',  bg:'#ff0000', fg:'#fff', buscar:['youtube']},
+  {id:'disney',    nombre:'Disney+',     ini:'D+',  bg:'#113ccf', fg:'#fff', buscar:['disney']},
+  {id:'max',       nombre:'Max',         ini:'max', bg:'#002be7', fg:'#fff', buscar:['max','hbo']},
+  {id:'prime',     nombre:'Prime Video', ini:'PV',  bg:'#00a8e1', fg:'#fff', buscar:['prime','amazon']},
+  {id:'paramount', nombre:'Paramount+',  ini:'P+',  bg:'#0064ff', fg:'#fff', buscar:['paramount']},
+  {id:'icloud',    nombre:'iCloud',      ini:'iC',  bg:'#3a3a3c', fg:'#fff', buscar:['icloud','apple']},
+  {id:'google',    nombre:'Google One',  ini:'G1',  bg:'#4285f4', fg:'#fff', buscar:['google']},
+  {id:'crunchy',   nombre:'Crunchyroll', ini:'CR',  bg:'#f47521', fg:'#fff', buscar:['crunchyroll']},
+];
 const REDES_TARJETA = ['Visa','Mastercard','Amex','Cabal','Naranja'];
 
 // Busca la marca: primero la elegida a mano, si no, por el nombre
@@ -376,6 +409,14 @@ function rendimiento(saldo, tna){
   return { dia: saldo*tna/100/365, mes: saldo*tna/100/12 };
 }
 
+// ----- Mensualidades -----
+function iconoSuscripcion(s){
+  const t = ' ' + String(s.nombre||'').toLowerCase() + ' ';
+  const m = SERVICIOS.find(x => x.buscar.some(p => p.length<=3 ? t.includes(' '+p+' ') : t.includes(p))) || marcaDe('', s.nombre);
+  return m ? badge(m) : `<div class="ico">${/gym|gimnasio/i.test(s.nombre)?'🏋️':'🔁'}</div>`;
+}
+function pagadaEsteMes(s){ return s.ultimoPago===mesActual(); }
+function totalMensual(moneda){ return state.suscripciones.filter(s=>s.moneda===moneda).reduce((a,s)=>a+s.monto,0); }
 function nombreExchange(){ return EXCHANGES_USDT.find(e=>e.id===state.usdt.exchange)?.nombre || state.usdt.exchange; }
 function iconoMoneda(m){ return m==='USD'?'💵' : m==='USDT'?'🪙' : '👛'; }
 function nombreMoneda(m){ return m==='USD'?'Dólares' : m==='USDT'?'USDT' : 'Pesos'; }
@@ -448,8 +489,8 @@ function vInicio(){
 
   // Cuotas que todavía debo (activas)
   const activas = state.deudas.filter(d=>d.direccion==='debo' && d.cuotasPagadas < d.cuotasTotales);
-  const cuotasMesARS = activas.filter(d=>d.moneda==='ARS').reduce((a,d)=>a+d.montoCuota,0);
-  const cuotasMesUSD = activas.filter(d=>d.moneda==='USD').reduce((a,d)=>a+d.montoCuota,0);
+  const cuotasMesARS = activas.filter(d=>d.moneda==='ARS').reduce((a,d)=>a+d.montoCuota,0) + totalMensual('ARS');
+  const cuotasMesUSD = activas.filter(d=>d.moneda==='USD').reduce((a,d)=>a+d.montoCuota,0) + totalMensual('USD');
 
   // Inversiones
   const invARS = state.inversiones.filter(i=>i.moneda==='ARS').reduce((a,i)=>a+i.valorActual,0);
@@ -467,9 +508,13 @@ function vInicio(){
 
   // Próximos vencimientos (ordenados por día del mes)
   const hoy = new Date().getDate();
-  const proximos = activas.slice().sort((a,b)=>{
-    const da=(a.diaVencimiento-hoy+31)%31, db=(b.diaVencimiento-hoy+31)%31; return da-db;
-  }).slice(0,3);
+  // Cuotas y mensualidades sin pagar este mes, juntas en una sola lista
+  const proximos = [
+    ...activas.map(d=>({dia:d.diaVencimiento||0, monto:d.montoCuota, moneda:d.moneda, nombre:d.descripcion,
+      ico: d.clase==='tarjeta'?miniTarjeta(d):'<div class="ico">🤝</div>', detalle:`cuota ${d.cuotasPagadas+1} de ${d.cuotasTotales}`})),
+    ...state.suscripciones.filter(su=>!pagadaEsteMes(su)).map(su=>({dia:su.dia||0, monto:su.monto, moneda:su.moneda, nombre:su.nombre,
+      ico: iconoSuscripcion(su), detalle:'mensualidad'})),
+  ].sort((a,b)=>((a.dia-hoy+31)%31)-((b.dia-hoy+31)%31)).slice(0,4);
 
   return `
     <div class="row" style="margin-top:6px">
@@ -490,7 +535,7 @@ function vInicio(){
 
     <div class="grid2">
       <div class="card" onclick="irA('cuotas')">
-        <div class="label">💳 Cuotas del mes</div>
+        <div class="label">💳 A pagar este mes</div>
         <div class="mid">${plata(cuotasMesARS)}</div>
         ${cuotasMesUSD?`<div class="s">+ ${plata(cuotasMesUSD,'USD')}</div>`:''}
       </div>
@@ -521,12 +566,12 @@ function vInicio(){
     ${proximos.length ? `
     <h2>Próximos vencimientos</h2>
     <div class="card">
-      ${proximos.map(d=>`
-        <div class="item">
-          ${d.clase==='tarjeta'?miniTarjeta(d):'<div class="ico">🤝</div>'}
-          <div class="grow"><div class="t">${esc(d.descripcion)}</div>
-            <div class="s">Día ${d.diaVencimiento} · cuota ${d.cuotasPagadas+1} de ${d.cuotasTotales}</div></div>
-          <div class="amt">${plata(d.montoCuota,d.moneda)}</div>
+      ${proximos.map(p=>`
+        <div class="item" onclick="irA('cuotas')">
+          ${p.ico}
+          <div class="grow"><div class="t">${esc(p.nombre)}</div>
+            <div class="s">${p.dia?`Día ${p.dia} · `:''}${p.detalle}</div></div>
+          <div class="amt">${plata(p.monto,p.moneda)}</div>
         </div>`).join('')}
     </div>`:''}
 
@@ -547,6 +592,77 @@ function vInicio(){
     ${hayUSDT()?`<div class="s" style="margin:-12px 4px 20px">🪙 USDT venta ${nombreExchange()}: ${state.usdt.valor?plata(state.usdt.valor):'sin dato'}${state.usdt.manual?' (manual)':''}</div>`:''}`;
 }
 
+// ----- Gráfico: gastos de los últimos 6 meses -----
+// Colores pensados para que se distingan bien entre sí (también para daltónicos)
+const COLORES_GRAF = ['#3987e5','#d95926','#199e70','#c98500','#d55181','#008300','#9085e9'];
+const GRIS_RESTO = '#5b6272';
+let desgloseMes = null; // el mes que tocaste en el gráfico (null = ninguno abierto)
+
+function gastosPorCategoria(ym){
+  const porCat = {};
+  for(const m of state.movimientos){
+    if(m.tipo!=='gasto' || !m.fecha.startsWith(ym)) continue;
+    const p = aPesos(m.monto, monedaDe(m)); if(p==null) continue;
+    porCat[m.categoria] = (porCat[m.categoria]||0) + p;
+  }
+  return porCat;
+}
+// "$ 350 mil", "$ 1,2 M": para que entren los números arriba de las barras
+function plataCorta(n){
+  if(n>=1e6) return '$ ' + (n/1e6).toLocaleString('es-AR',{maximumFractionDigits:1}) + ' M';
+  if(n>=1e3) return '$ ' + Math.round(n/1e3) + ' mil';
+  return '$ ' + Math.round(n);
+}
+function tocarMes(ym){
+  desgloseMes = desgloseMes===ym ? null : ym;
+  mesVisto = ym;
+  render();
+}
+function graficoMeses(){
+  const meses = [...Array(6)].map((_,i)=>moverMes(mesActual(), i-5));
+  const datos = meses.map(ym=>{ const cats=gastosPorCategoria(ym); return {ym, cats, total:Object.values(cats).reduce((a,b)=>a+b,0)}; });
+  if(!datos.some(d=>d.total)) return '';
+
+  // Cada categoría tiene SIEMPRE el mismo color: las 7 donde más gastaste en estos meses tienen color propio, el resto va en gris
+  const sumas = {};
+  datos.forEach(d=>Object.entries(d.cats).forEach(([k,v])=>sumas[k]=(sumas[k]||0)+v));
+  const top = Object.entries(sumas).sort((a,b)=>b[1]-a[1]).slice(0,7).map(x=>x[0]);
+  const colorDe = id => top.includes(id) ? COLORES_GRAF[top.indexOf(id)] : GRIS_RESTO;
+
+  const ALTO = 120; // alto máximo de una barra, en píxeles
+  const max = Math.max(...datos.map(d=>d.total));
+  const abierto = datos.find(d=>d.ym===desgloseMes);
+
+  const barra = d => {
+    const alto = Math.max(2, Math.round(d.total/max*ALTO));
+    if(d!==abierto || !d.total) return `<div class="graf-barra" style="height:${alto}px"><i style="flex:1"></i></div>`;
+    // Barra abierta: un pedazo por categoría (abajo las más grandes) y el resto junto en gris
+    const resto = Object.entries(d.cats).filter(([id])=>!top.includes(id)).reduce((a,[,v])=>a+v,0);
+    const pedazos = top.filter(id=>d.cats[id]).map(id=>({v:d.cats[id], color:colorDe(id)}));
+    if(resto) pedazos.push({v:resto, color:GRIS_RESTO});
+    return `<div class="graf-barra" style="height:${alto}px">${pedazos.map(p=>`<i style="flex:${p.v} 1 0;min-height:2px;background:${p.color}"></i>`).join('')}</div>`;
+  };
+
+  const leyenda = abierto && abierto.total ? `
+    <div class="label" style="margin-top:16px">En qué se fue la plata en ${nombreMes(abierto.ym)}</div>
+    <div class="leyenda">${Object.entries(abierto.cats).sort((a,b)=>b[1]-a[1]).map(([id,v])=>{ const c=categoria(id);
+      return `<div class="row"><span><i class="punto" style="background:${colorDe(id)}"></i>${c.emoji} ${c.nombre}</span>
+        <span><b>${plata(Math.round(v))}</b> <span class="s">${Math.round(v/abierto.total*100)}%</span></span></div>`;}).join('')}</div>`
+    : `<p class="s" style="text-align:center;margin:12px 0 0">Tocá un mes para ver en qué se fue la plata.</p>`;
+
+  return `<div class="card">
+    <div class="label">Gastos de los últimos 6 meses (en pesos)</div>
+    <div class="graf">
+      ${datos.map(d=>`<button class="graf-col ${d===abierto?'on':''}" onclick="tocarMes('${d.ym}')" aria-label="${nombreMes(d.ym)}: ${plata(Math.round(d.total))}">
+        <span class="graf-val">${d.total?plataCorta(d.total):''}</span>
+        ${barra(d)}
+        <span class="graf-mes">${nombreMes(d.ym).slice(0,3)}</span>
+      </button>`).join('')}
+    </div>
+    ${leyenda}
+  </div>`;
+}
+
 // ----- Gastos -----
 function vGastos(){
   const lista = state.movimientos.filter(m=>m.fecha.startsWith(mesVisto)).sort((a,b)=>b.fecha.localeCompare(a.fecha) || b.id.localeCompare(a.id));
@@ -560,6 +676,7 @@ function vGastos(){
   return `
     <h1>Gastos</h1>
     <p class="sub">Todo lo que entra y sale, mes a mes.</p>
+    ${graficoMeses()}
     <div class="monthnav">
       <button onclick="mesVisto=moverMes(mesVisto,-1);render()">‹</button>
       <b>${nombreMes(mesVisto)}</b>
@@ -621,8 +738,21 @@ function vCuotas(){
       <div class="label">${filtroDeuda==='debo'?'Te falta pagar':'Te falta cobrar'}</div>
       <div class="big">${plata(restaARS)}</div>
       ${restaUSD?`<div class="s">+ ${plata(restaUSD,'USD')}</div>`:''}
+      ${filtroDeuda==='debo' && state.suscripciones.length ? `<div class="s" style="margin-top:8px">+ mensualidades: <b style="color:var(--txt)">${[['ARS',totalMensual('ARS')],['USD',totalMensual('USD')]].filter(x=>x[1]).map(([m,v])=>plata(v,m)).join(' + ')}</b> por mes</div>`:''}
     </div>
-    ${activas.map(tarjeta).join('') || `<div class="card empty">${filtroDeuda==='debo'?'No tenés cuotas pendientes 🎉':'Nadie te debe nada'}</div>`}
+    ${filtroDeuda==='debo' && state.suscripciones.length ? `
+    <h2>🔁 Mensualidades</h2>
+    <div class="card" style="padding:4px 16px">
+      ${state.suscripciones.slice().sort((a,b)=>(a.dia||32)-(b.dia||32)).map(su=>{ const b=billetera(su.billeteraId);
+        return `<div class="item">
+          <div onclick="formSuscripcion('${su.id}')">${iconoSuscripcion(su)}</div>
+          <div class="grow" onclick="formSuscripcion('${su.id}')"><div class="t">${esc(su.nombre)}</div>
+            <div class="s">${plata(su.monto,su.moneda)} por mes${su.dia?` · día ${su.dia}`:''}${b?` · ${esc(b.nombre)}`:''}</div></div>
+          ${pagadaEsteMes(su) ? `<span class="pill">✅ Pagado</span>` : `<button class="btn sm" onclick="pagarMensualidad('${su.id}')">Pagar</button>`}
+        </div>`;}).join('')}
+    </div>
+    ${activas.length?'<h2>💳 Cuotas</h2>':''}`:''}
+    ${activas.map(tarjeta).join('') || (filtroDeuda==='debo' && state.suscripciones.length ? '' : `<div class="card empty">${filtroDeuda==='debo'?'No tenés cuotas pendientes 🎉':'Nadie te debe nada'}</div>`)}
     ${terminadas.length?`<h2>Terminadas</h2>${terminadas.map(tarjeta).join('')}`:''}`;
 }
 
@@ -656,6 +786,34 @@ function confirmarPago(id){
   }
   save(); cerrarSheet(); render();
   toast(d.cuotasPagadas>=d.cuotasTotales ? '🎉 ¡Terminaste de pagarla!' : '✅ Cuota registrada');
+}
+
+function pagarMensualidad(id){
+  const su = state.suscripciones.find(x=>x.id===id); if(!su) return;
+  const billes = state.billeteras.filter(b=>b.moneda===su.moneda);
+  abrirSheet(`
+    <h3>Pagar ${esc(su.nombre)}</h3>
+    <p class="sub">${nombreMes(mesActual())} · ${plata(su.monto,su.moneda)}</p>
+    <label>¿De qué billetera sale?</label>
+    <select id="pmBille">
+      <option value="">No registrar movimiento</option>
+      ${billes.map(b=>`<option value="${b.id}">${esc(b.nombre)}</option>`).join('')}
+    </select>
+    <div class="actions">
+      <button class="btn" onclick="confirmarMensualidad('${id}')">Confirmar</button>
+    </div>`);
+  const elegida = billes.find(b=>b.id===su.billeteraId) || billes[0];
+  if(elegida) $('#pmBille').value = elegida.id;
+}
+function confirmarMensualidad(id){
+  const su = state.suscripciones.find(x=>x.id===id);
+  const bId = $('#pmBille').value;
+  su.ultimoPago = mesActual();
+  if(bId){
+    state.movimientos.push({id:uid(), tipo:'gasto', monto:su.monto, billeteraId:bId, categoria:'subs', fecha:hoyISO(),
+      nota:`${su.nombre} (${nombreMes(mesActual())})`});
+  }
+  save(); cerrarSheet(); render(); toast('✅ Mensualidad pagada');
 }
 
 // ----- Inversiones -----
@@ -791,7 +949,7 @@ function borrarTodo(){
 // ============================================================
 //  FORMULARIOS (hoja que sube desde abajo)
 // ============================================================
-function abrirSheet(html){ $('#sheet').innerHTML = '<div class="handle"></div>' + html; $('#overlay').classList.add('open'); $('#fab').style.visibility='hidden'; }
+function abrirSheet(html){ $('#sheet').innerHTML = '<div class="handle"></div><button class="cerrar" onclick="cerrarSheet()" aria-label="Cerrar">✕</button>' + html; $('#overlay').classList.add('open'); $('#fab').style.visibility='hidden'; }
 function cerrarSheet(){ $('#overlay').classList.remove('open'); $('#fab').style.visibility=''; }
 $('#overlay').addEventListener('click', e=>{ if(e.target.id==='overlay') cerrarSheet(); });
 
@@ -902,7 +1060,7 @@ function formDeuda(id){
   let clase = d?d.clase:'tarjeta', dir = d?d.direccion:filtroDeuda, mon = d?d.moneda:'ARS';
   abrirSheet(`
     <h3>${d?'Editar':'Nueva'} cuota / deuda</h3>
-    <div class="seg" id="dClase"><button data-v="tarjeta">💳 Tarjeta</button><button data-v="persona">🤝 Persona</button></div>
+    <div class="seg" id="dClase"><button data-v="tarjeta">💳 Tarjeta</button><button data-v="persona">🤝 Persona</button>${d?'':'<button data-v="mensual">🔁 Mensual</button>'}</div>
     <div id="dDirWrap" style="margin-top:10px"><div class="seg" id="dDir"><button data-v="debo">Yo le debo</button><button data-v="medeben">Me debe</button></div></div>
     <label>¿Qué es?</label>
     <input id="dDesc" placeholder="Ej: Zapatillas, Celular, Préstamo" value="${esc(d?d.descripcion:'')}">
@@ -944,7 +1102,7 @@ function formDeuda(id){
     const m = MARCAS.find(x=>x.id===idM);
     if(m && !$('#dQuien').value.trim()) $('#dQuien').value = m.nombre;
   });
-  document.querySelectorAll('#dClase button').forEach(x=>x.onclick=()=>{clase=x.dataset.v;pint();});
+  document.querySelectorAll('#dClase button').forEach(x=>x.onclick=()=>{ if(x.dataset.v==='mensual') return formSuscripcion(); clase=x.dataset.v; pint(); });
   document.querySelectorAll('#dDir button').forEach(x=>x.onclick=()=>{dir=x.dataset.v;pint();});
   document.querySelectorAll('#dMon button').forEach(x=>x.onclick=()=>{mon=x.dataset.v;pint();});
   pint();
@@ -962,6 +1120,50 @@ function guardarDeuda(id){
   if(id) Object.assign(state.deudas.find(x=>x.id===id),datos); else state.deudas.push({id:uid(),...datos});
   filtroDeuda = dir;
   save(); cerrarSheet(); render(); toast('💳 Guardado');
+}
+
+// ----- Mensualidad (Claude, Netflix, gimnasio...) -----
+function formSuscripcion(id){
+  const su = id ? state.suscripciones.find(x=>x.id===id) : null;
+  let mon = su?su.moneda:'ARS';
+  abrirSheet(`
+    <h3>${su?'Editar':'Nueva'} mensualidad</h3>
+    ${su?'':`<div class="seg" id="sClase" style="margin-bottom:4px"><button data-v="tarjeta">💳 Tarjeta</button><button data-v="persona">🤝 Persona</button><button class="on">🔁 Mensual</button></div>`}
+    <label>¿Qué es?</label>
+    <input id="sNombre" placeholder="Ej: Claude, Netflix, Spotify, Gimnasio" value="${esc(su?su.nombre:'')}">
+    <label>Moneda</label>
+    <div class="seg" id="sMon"><button data-v="ARS">Pesos</button><button data-v="USD">Dólares</button></div>
+    <div class="grid2">
+      <div><label>Monto por mes</label><input id="sMonto" inputmode="decimal" placeholder="0" value="${su?su.monto:''}"></div>
+      <div><label>Día de cobro</label><input id="sDia" inputmode="numeric" placeholder="Ej: 5" value="${su&&su.dia?su.dia:''}"></div>
+    </div>
+    <label>¿Con qué la pagás?</label>
+    <select id="sBille"></select>
+    <div class="actions">
+      <button class="btn" onclick="guardarSuscripcion('${id||''}')">Guardar</button>
+      ${su?`<button class="btn danger" onclick="borrar('suscripciones','${id}')">Eliminar</button>`:''}
+    </div>`);
+  // La lista de billeteras depende de la moneda elegida
+  const pint=()=>{
+    document.querySelectorAll('#sMon button').forEach(x=>x.classList.toggle('on',x.dataset.v===mon));
+    const billes = state.billeteras.filter(b=>b.moneda===mon);
+    $('#sBille').innerHTML = `<option value="">Elegir al pagar</option>` + billes.map(b=>`<option value="${b.id}">${esc(b.nombre)}</option>`).join('');
+    if(su && billes.some(b=>b.id===su.billeteraId)) $('#sBille').value = su.billeteraId;
+  };
+  document.querySelectorAll('#sMon button').forEach(x=>x.onclick=()=>{mon=x.dataset.v;pint();});
+  document.querySelectorAll('#sClase button[data-v]').forEach(x=>x.onclick=()=>{ formDeuda(); document.querySelector(`#dClase button[data-v="${x.dataset.v}"]`).click(); });
+  pint();
+  formSuscripcion._mon = ()=>mon;
+}
+function guardarSuscripcion(id){
+  const nombre=$('#sNombre').value.trim(); if(!nombre) return toast('¿Qué mensualidad es?');
+  const monto=num($('#sMonto').value); if(monto<=0) return toast('Poné el monto por mes');
+  const dia=Math.min(31,Math.max(0,parseInt($('#sDia').value)||0));
+  const datos={nombre, moneda:formSuscripcion._mon(), monto, dia, billeteraId:$('#sBille').value};
+  if(id) Object.assign(state.suscripciones.find(x=>x.id===id),datos);
+  else state.suscripciones.push({id:uid(), ultimoPago:null, ...datos});
+  filtroDeuda='debo';
+  save(); cerrarSheet(); render(); toast('🔁 Mensualidad guardada');
 }
 
 // ----- Inversión -----
