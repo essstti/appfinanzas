@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><style>svg{--a:#161616;--b:#2340d9;--p:#fffefa}@media (prefers-color-scheme:dark){svg{--a:#f4f4f5;--b:#ff3b5c;--p:#18181b}}</style><rect width="256" height="256" rx="56" fill="var(--p)"/><g transform="rotate(-8 128 128)"><circle cx="128" cy="128" r="118" fill="none" stroke="var(--b)" stroke-width="14"/><defs><clipPath id="rec-f"><circle cx="128" cy="128" r="103"/></clipPath></defs>
+<g clip-path="url(#rec-f)"><g transform="translate(17 14) scale(0.92)"><path d="M104 330 V184 Q104 126 158 126 Q212 126 212 184 V330 H104 Z" fill="var(--b)"/>
+<circle cx="150" cy="82" r="30" fill="var(--b)"/>
+<path d="M44 330 V184 Q44 126 98 126 Q152 126 152 184 V330 H44 Z" fill="var(--a)" stroke="var(--p)" stroke-width="9" paint-order="stroke"/>
+<circle cx="104" cy="82" r="30" fill="var(--a)" stroke="var(--p)" stroke-width="8" paint-order="stroke"/>
+<path d="M122 184 Q164 146 206 160" fill="none" stroke="var(--p)" stroke-width="33" stroke-linecap="round"/>
+<path d="M122 184 Q164 146 206 160" fill="none" stroke="var(--a)" stroke-width="20" stroke-linecap="round"/>
+<circle cx="47" cy="158" r="16" fill="var(--b)" stroke="var(--p)" stroke-width="7" paint-order="stroke"/></g></g></g></svg>
