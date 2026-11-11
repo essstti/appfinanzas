@@ -9,10 +9,10 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Cuentas Claras">
-<link rel="manifest" href="manifest.webmanifest?v=13">
-<link rel="apple-touch-icon" href="icons/icon-180.png?v=13">
-<link rel="icon" href="icons/favicon.svg?v=13" type="image/svg+xml">
-<link rel="alternate icon" href="icons/icon-192.png?v=13">
+<link rel="manifest" href="manifest.webmanifest?v=14">
+<link rel="apple-touch-icon" href="icons/icon-180.png?v=14">
+<link rel="icon" href="icons/favicon.svg?v=14" type="image/svg+xml">
+<link rel="alternate icon" href="icons/icon-192.png?v=14">
 <style>
   /* ============================================================
      DISEÑO "TICKET DEL SÚPER"
@@ -220,6 +220,68 @@
   .logo-bienvenida svg,.pie svg{width:100%;height:100%;display:block}
   .pie{text-align:center;margin:28px 0 20px}.pie svg{width:110px;height:110px;margin:0 auto 6px}
   .avatar{width:44px;height:44px;border-radius:4px;background:var(--card2);display:grid;place-items:center;font-size:24px}
+/* ============================================================
+     TICKET 2 (versión 14): renglones con puntitos, total con doble raya,
+     código de barras y vencimientos conectados
+     ============================================================ */
+html,body{font-variant-numeric:tabular-nums}
+h1{letter-spacing:.5px}
+h2{border:0;text-align:center;letter-spacing:4px;font-size:13px;margin:30px 0 12px;display:flex;align-items:center;gap:12px;padding:0}
+h2::before,h2::after{content:'';flex:1;border-top:1.5px dashed var(--punteo)}
+.card{border:0;box-shadow:0 1px 0 var(--line),0 0 0 1px var(--line)}
+/* El total como el final de un ticket */
+.hero{border-top:0;padding:18px 18px 34px}
+.hero .label{display:flex;justify-content:space-between}
+.hero .big{border-top:3px double var(--txt);border-bottom:3px double var(--txt);padding:10px 0 8px;margin:8px 0 10px;font-size:34px}
+.hero::after{content:'';display:block;height:34px;margin-top:14px;opacity:.85;
+  background:repeating-linear-gradient(90deg,var(--txt) 0 2px,transparent 2px 4px,var(--txt) 4px 5px,transparent 5px 8px,var(--txt) 8px 11px,transparent 11px 12px,var(--txt) 12px 13px,transparent 13px 17px,var(--txt) 17px 19px,transparent 19px 21px)}
+.hero .s{letter-spacing:.3px}
+/* Talón doble: las dos tarjetas son un mismo papel con troquel en el medio */
+.grid2{gap:0}
+.grid2 .card:first-child{border-radius:var(--r) 0 0 var(--r);border-right:1.5px dashed var(--punteo)}
+.grid2 .card:last-child{border-radius:0 var(--r) var(--r) 0}
+/* Renglones de ticket: nombre ....... importe */
+.item .grow{background:radial-gradient(circle,var(--punteo) 1.1px,transparent 1.6px) 0 14px/7px 4px repeat-x}
+.item .grow .t{display:inline-block;max-width:100%;background:var(--card);padding-right:8px;vertical-align:top}
+.item .grow .s{background:var(--card);display:table;padding-right:8px}
+.item .amt{background:var(--card);padding-left:2px}
+.item{border-bottom:1px solid var(--line)}
+.ico{border-radius:2px}
+.label{letter-spacing:1.5px}
+.btn{letter-spacing:2px}
+.pill{transform:rotate(-5deg)}
+nav{border-top:1.5px dashed var(--txt)}
+nav button.on{position:relative}
+nav button.on::after{content:'';position:absolute;left:30%;right:30%;bottom:-2px;border-bottom:2px solid var(--accent)}
+.sheet{border-radius:0;-webkit-mask:radial-gradient(circle 6px at 50% 0,#0000 97%,#000) 50% 0/14px 100% repeat-x;mask:radial-gradient(circle 6px at 50% 0,#0000 97%,#000) 50% 0/14px 100% repeat-x;padding-top:24px}
+.grid2 .label{letter-spacing:.4px}
+/* La línea del ticket: lo que hay que pagar, encadenado con una raya punteada del color del sello */
+.linea .item{position:relative;border-bottom:0}
+.linea .item::before{content:'';position:absolute;left:27px;top:0;bottom:0;border-left:2px dashed var(--accent)}
+.linea .item:first-child::before{top:50%}
+.linea .item:last-child::before{bottom:50%}
+.linea .item:only-child::before{display:none}
+.linea .item .ico{margin:0 8px;position:relative;z-index:1;box-shadow:0 0 0 4px var(--card)}
+.linea .item .mini-card{position:relative;z-index:1;box-shadow:0 0 0 4px var(--card)}
+.linea .proximo .ico,.linea .proximo .mini-card{outline:2px solid var(--accent);outline-offset:3px}
+.linea .item:has(.pill) .ico{opacity:.45}
+.linea .proximo .t{overflow:visible}
+.linea .proximo .t::after,.cuota.proximo::after{content:'Próximo';display:inline-block;margin-left:10px;font-size:10px;padding:1px 6px;border:1.5px solid var(--accent);color:var(--accent);
+  text-transform:uppercase;letter-spacing:.5px;font-weight:700;border-radius:3px;transform:rotate(-6deg);vertical-align:2px;background:var(--card)}
+.cuota{position:relative}
+.cuota+.cuota::before{content:'';position:absolute;left:43px;top:-13px;height:13px;border-left:2px dashed var(--accent)}
+.cuota.proximo{box-shadow:0 0 0 1.5px var(--accent)}
+.cuota.proximo::after{content:'Próxima';position:absolute;top:-9px;right:16px;margin:0}
+/* La hora en el total, como la que imprime el ticket; los dos puntitos titilan */
+.hero .label{gap:10px}
+.reloj{white-space:nowrap;letter-spacing:1px}
+.reloj b{animation:titila 2s steps(2,end) infinite;font-weight:400}
+@keyframes titila{50%{opacity:.15}}
+/* El sello de "Próximo" cae sobre el papel como un sello de goma, y después respira suave */
+.linea .proximo .t::after,.cuota.proximo::after{animation:sellar .45s .25s cubic-bezier(.3,1.6,.5,1) both, respirar 3.2s 1s ease-in-out infinite}
+@keyframes sellar{from{opacity:0;transform:scale(2.2) rotate(-14deg)}to{opacity:1;transform:rotate(-6deg)}}
+@keyframes respirar{0%,100%{transform:rotate(-6deg) scale(1)}50%{transform:rotate(-6deg) scale(1.08)}}
+@media (prefers-reduced-motion:reduce){.linea .proximo .t::after,.cuota.proximo::after,.reloj b{animation:none}}
 </style>
 </head>
 <body>
@@ -237,7 +299,7 @@
    ============================================================ */
 
 const STORAGE_KEY = 'finanzas-v1';
-const VERSION_APP = 13; // subilo junto con el de sw.js, así sabés en Ajustes qué versión tenés
+const VERSION_APP = 14; // subilo junto con el de sw.js, así sabés en Ajustes qué versión tenés
 
 // Logo "Cuentas claras": usa los colores del modo actual (azul de día, cereza de noche)
 function logoSello(u='l', A='var(--txt)', B='var(--accent)', P='var(--bg)'){
@@ -645,6 +707,32 @@ function iconoMoneda(m){ return m==='USD'?'dolar' : m==='USDT'?'usdt' : 'billete
 function nombreMoneda(m){ return m==='USD'?'Dólares' : m==='USDT'?'USDT' : 'Pesos'; }
 function hayUSDT(){ return state.billeteras.some(b=>b.moneda==='USDT') || state.inversiones.some(i=>i.moneda==='USDT'); }
 
+// ----- Vencimientos conectados -----
+// Cuántos días faltan para ese día del mes (si ya pasó, cuenta hasta el mes que viene)
+function diasHasta(dia){ return ((dia||0) - new Date().getDate() + 31) % 31; }
+// Mensualidades: primero las que faltan pagar, de la que vence antes a la que vence después
+function ordenVence(a,b){
+  const pa=pagadaPeriodo(a), pb=pagadaPeriodo(b);
+  if(pa!==pb) return pa ? 1 : -1;
+  return diasHasta(a.dia) - diasHasta(b.dia);
+}
+// Le pone el sello de "Próximo" a lo primero que falta pagar de cada lista
+function marcarProximos(){
+  document.querySelectorAll('#main .linea').forEach(l=>{
+    const p = [...l.querySelectorAll('.item')].find(i=>!i.querySelector('.pill'));
+    if(p) p.classList.add('proximo');
+  });
+  const c = [...document.querySelectorAll('#main .cuota')].find(x=>!x.querySelector('.pill'));
+  if(c) c.classList.add('proximo');
+}
+// Fecha y hora como en un ticket: "MIÉ 11/11 · 14:32"
+function fechaHora(){
+  const d = new Date(), p = n=>String(n).padStart(2,'0');
+  const dia = d.toLocaleDateString('es-AR',{weekday:'short'}).replace('.','').toUpperCase();
+  return `${dia} ${p(d.getDate())}/${p(d.getMonth()+1)} · ${p(d.getHours())}<b>:</b>${p(d.getMinutes())}`;
+}
+setInterval(()=>{ const r=$('.hero .reloj'); if(r) r.innerHTML=fechaHora(); }, 10000);
+
 // ============================================================
 //  VISTAS
 // ============================================================
@@ -655,6 +743,7 @@ function render(){
   renderNav();
   const vistas = {inicio:vInicio, gastos:vGastos, cuotas:vCuotas, inversiones:vInversiones, ajustes:vAjustes};
   $('#main').innerHTML = vistas[vista]();
+  marcarProximos();
   window.scrollTo(0,0);
   pedirEfecto();
 }
@@ -698,7 +787,7 @@ function crearUsuario(){
   }
   save(); vista='inicio'; render();
   toast(`¡Bienvenido, ${nombre}!`);
-  actualizarDolar(true); actualizarUSDT(true);
+  actualizarDolar(true); actualizarUSDT(); // el USDT sin aviso: recién arrancás y quizás no usás cripto
 }
 
 // ----- Inicio / Resumen -----
@@ -754,24 +843,23 @@ function vInicio(){
     </div>
 
     <div class="card hero" style="margin-top:14px">
-      <div class="label">Gastaste este mes · ${nombreMes(mesActual())}</div>
-      <div class="big">${plata(gastosARS,'ARS')}</div>
-      ${gastosUSD ? `<div class="s">+ ${plata(gastosUSD,'USD')} ${usdEnPesos!=null?`(≈ ${plata(usdEnPesos)})`:''}</div>` : ''}
-      ${gastosUSD && usdEnPesos!=null ? `<div class="s" style="margin-top:8px">Total en pesos: <b style="color:var(--txt)">${plata(totalMesPesos)}</b></div>`:''}
-      ${ingresosARS ? `<div class="s" style="margin-top:8px">Ingresos: <span class="pos">${plata(ingresosARS)}</span></div>`:''}
+      <div class="label"><span>Tenés en total</span><span class="reloj">${fechaHora()}</span></div>
+      <div class="big ${totalPesos<0?'neg':''}">${plata(Math.round(totalPesos))}</div>
+      <div class="s">${sinCotizar.length ? '+ '+sinCotizar.join(' + ') : `Sumando ${state.billeteras.length} billetera${state.billeteras.length===1?'':'s'}, pasado a pesos`}</div>
     </div>
 
     <div class="grid2">
+      <div class="card" onclick="irA('gastos')">
+        <div class="label con-ico">${ici('recibo')} Gastaste este mes</div>
+        <div class="mid">${plata(gastosARS)}</div>
+        ${gastosUSD?`<div class="s">+ ${plata(gastosUSD,'USD')}</div>`:''}
+        ${ingresosARS?`<div class="s">Entró <span class="pos">${plata(ingresosARS)}</span></div>`:''}
+      </div>
       <div class="card" onclick="irA('cuotas')">
         <div class="label con-ico">${ici('tarjeta')} A pagar este mes</div>
         ${cuotasMesUSD && cuotasMesUSDPesos!=null
           ? `<div class="mid">${plata(Math.round(cuotasMesARS+cuotasMesUSDPesos))}</div><div class="s">incluye ${plata(cuotasMesUSD,'USD')}</div>`
           : `<div class="mid">${plata(cuotasMesARS)}</div>${cuotasMesUSD?`<div class="s">+ ${plata(cuotasMesUSD,'USD')}</div>`:''}`}
-      </div>
-      <div class="card">
-        <div class="label con-ico">${ici('billetera')} Total</div>
-        <div class="mid ${totalPesos<0?'neg':''}">${plata(Math.round(totalPesos))}</div>
-        <div class="s">${sinCotizar.length ? '+ '+sinCotizar.join(' + ') : `en ${state.billeteras.length} billetera${state.billeteras.length===1?'':'s'}`}</div>
       </div>
     </div>
 
@@ -793,7 +881,7 @@ function vInicio(){
 
     ${proximos.length ? `
     <h2>Próximos vencimientos</h2>
-    <div class="card">
+    <div class="card linea">
       ${proximos.map(p=>`
         <div class="item" onclick="irA('cuotas')">
           ${p.ico}
@@ -945,7 +1033,7 @@ function vCuotas(){
   const tarjeta = d => {
     const resta = d.cuotasTotales - d.cuotasPagadas;
     const pct = d.cuotasPagadas/d.cuotasTotales*100;
-    return `<div class="card">
+    return `<div class="card cuota">
       <div class="row" onclick="formDeuda('${d.id}')">
         <div class="row" style="justify-content:flex-start;gap:12px;min-width:0">
           ${d.clase==='tarjeta'?miniTarjeta(d):`<div class="ico">${ic('personas')}</div>`}
@@ -976,8 +1064,8 @@ function vCuotas(){
     </div>
     ${filtroDeuda==='debo' && state.suscripciones.length ? `
     <h2 class="con-ico">${ici('repetir')} Mensualidades</h2>
-    <div class="card" style="padding:4px 16px">
-      ${state.suscripciones.slice().sort((a,b)=>(a.dia||32)-(b.dia||32)).map(su=>{ const b=billetera(su.billeteraId);
+    <div class="card linea" style="padding:4px 16px">
+      ${state.suscripciones.slice().sort(ordenVence).map(su=>{ const b=billetera(su.billeteraId);
         return `<div class="item">
           <div onclick="formSuscripcion('${su.id}')">${iconoSuscripcion(su)}</div>
           <div class="grow" onclick="formSuscripcion('${su.id}')"><div class="t">${esc(su.nombre)}</div>
@@ -989,7 +1077,7 @@ function vCuotas(){
         </div>`;}).join('')}
     </div>
     ${activas.length?`<h2 class="con-ico">${ici('tarjeta')} Cuotas</h2>`:''}`:''}
-    ${activas.map(tarjeta).join('') || (filtroDeuda==='debo' && state.suscripciones.length ? '' : `<div class="card empty">${filtroDeuda==='debo'?'No tenés cuotas pendientes 🎉':'Nadie te debe nada'}</div>`)}
+    ${activas.slice().sort((a,b)=>diasHasta(a.diaVencimiento)-diasHasta(b.diaVencimiento)).map(tarjeta).join('') || (filtroDeuda==='debo' && state.suscripciones.length ? '' : `<div class="card empty">${filtroDeuda==='debo'?'No tenés cuotas pendientes 🎉':'Nadie te debe nada'}</div>`)}
     ${terminadas.length?`<h2>Terminadas</h2>${terminadas.map(tarjeta).join('')}`:''}`;
 }
 
