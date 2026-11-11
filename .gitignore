@@ -1,0 +1,6 @@
+# Respaldos de la app: tienen tus datos, nunca se suben a GitHub (el repositorio es público)
+cuentas-claras-respaldo-*.json
+finanzas-respaldo-*.json
+
+# Motor de Impeccable: pesa 25 MB y es para Linux; se vuelve a bajar con "npx impeccable install"
+.claude/skills/impeccable/scripts/bin/
