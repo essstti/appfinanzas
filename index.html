@@ -299,7 +299,11 @@ nav button.on::after{content:'';position:absolute;left:30%;right:30%;bottom:-2px
 .dol-tit>span:first-child{font-weight:400}
 .dol-fila.en-uso .amt{color:var(--accent)}
 .dol-cambio{margin-top:10px;font-size:12.5px;color:var(--muted)}
-.dol-cambio+.dol-cambio{margin-top:2px}
+.dol-imp-fila{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:6px 0;border-bottom:1.5px dashed var(--punteo);font-size:13px}
+.dol-imp-fila span{display:flex;flex-direction:column;min-width:0}
+.dol-imp-fila small{color:var(--muted);font-size:11px;margin-top:1px}
+.dol-imp-fila b{white-space:nowrap}
+.dol-imp-total{border-bottom:0;border-top:3px double var(--txt);margin-top:4px;font-weight:700}
 /* "● en vivo" al lado del dólar: el puntito titila */
 .vivo{color:var(--green);white-space:nowrap}
 .vivo{animation:titila 2s steps(2,end) infinite}
@@ -489,7 +493,7 @@ async function actualizarDolar(forzar=false){
     const lista = await r.json();
     const antes = JSON.stringify(state.dolares?.valores||{});
     const valores = {};
-    for(const d of lista){ if(TIPOS_DOLAR.some(t=>t.id===d.casa) && d.venta) valores[d.casa] = {compra:Number(d.compra)||null, venta:Number(d.venta)}; }
+    for(const d of lista){ if(d.venta) valores[d.casa] = {compra:Number(d.compra)||null, venta:Number(d.venta)}; } // incluye "cripto" y "bolsa" (MEP) para el cálculo de abajo
     state.dolares = {valores, actualizado:Date.now()};
     let cambio = JSON.stringify(valores)!==antes;
     const elegido = valores[state.dolar.tipo];
@@ -508,34 +512,73 @@ async function actualizarDolar(forzar=false){
 }
 
 // ---------- Cuánto cambió el dólar desde ayer ----------
-// Busca el cierre del día anterior (ArgentinaDatos guarda uno por día). Si ayer fue feriado, va para atrás hasta 6 días.
+// Cada dólar que tenés se mueve con su propio precio:
+//  - Billeteras en dólares y otras inversiones: el dólar que elegiste (Blue, MEP...)
+//  - USDT e inversiones cripto: el dólar cripto
+//  - CEDEARs, acciones y bonos: el MEP (bolsa)
+function dolaresPorLugar(){
+  const g = {};
+  const sumar = (casa, nombre, monto) => { if(!(monto>0)) return; const k=casa+'|'+nombre; (g[k] ||= {casa, nombre, monto:0}).monto += monto; };
+  for(const b of state.billeteras){
+    const s = saldoBilletera(b);
+    if(b.moneda==='USD') sumar(state.dolar.tipo, 'Billeteras en dólares', s);
+    if(b.moneda==='USDT') sumar('cripto', 'USDT', s);
+  }
+  for(const i of state.inversiones){
+    if(i.moneda!=='USD') continue;
+    const v = Number(i.valorActual)||0;
+    if(i.tipo==='Acciones/CEDEARs' || i.tipo==='Bonos') sumar('bolsa', 'CEDEARs y bonos', v);
+    else if(i.tipo==='Cripto') sumar('cripto', 'Cripto', v);
+    else sumar(state.dolar.tipo, 'Otras inversiones en dólares', v);
+  }
+  return Object.values(g);
+}
+const NOMBRE_CASA = {blue:'Blue', bolsa:'MEP', oficial:'Oficial', tarjeta:'Tarjeta', cripto:'dólar cripto'};
+// Busca el cierre del día anterior de cada dólar que haga falta (ArgentinaDatos guarda uno por día; si ayer fue feriado, va para atrás)
 async function actualizarDolarAyer(){
-  const tipo = state.dolar.tipo, hoy = hoyISO();
-  if(state.dolarAyer && state.dolarAyer.tipo===tipo && state.dolarAyer.buscado===hoy) return;
+  const hoy = hoyISO();
+  if(!state.dolarAyer?.valores || state.dolarAyer.buscado!==hoy) state.dolarAyer = {buscado:hoy, valores:{}};
+  const casas = [...new Set([state.dolar.tipo, ...dolaresPorLugar().map(x=>x.casa)])].filter(c=>!state.dolarAyer.valores[c]);
+  if(!casas.length) return;
   try{
-    for(let i=1;i<=6;i++){
-      const d = new Date(); d.setDate(d.getDate()-i);
-      const r = await fetch(`https://api.argentinadatos.com/v1/cotizaciones/dolares/${tipo}/${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`, {cache:'no-store'});
-      if(!r.ok) continue;
-      const x = await r.json();
-      if(x && x.venta){ state.dolarAyer = {tipo, buscado:hoy, fecha:x.fecha, venta:Number(x.venta)}; save(); renderSuave(); return; }
+    for(const casa of casas){
+      for(let i=1;i<=6;i++){
+        const d = new Date(); d.setDate(d.getDate()-i);
+        const r = await fetch(`https://api.argentinadatos.com/v1/cotizaciones/dolares/${casa}/${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`, {cache:'no-store'});
+        if(!r.ok) continue;
+        const x = await r.json();
+        if(x && x.venta){ state.dolarAyer.valores[casa] = {fecha:x.fecha, venta:Number(x.venta)}; break; }
+      }
     }
+    save(); renderSuave();
   }catch(e){ /* sin internet: se vuelve a intentar en la próxima actualización */ }
 }
-// Texto para Inicio: cuánto subió o bajó, y cuánto cambian en pesos los dólares que tenés
+// Texto para Inicio: cuánto subió o bajó, y cuánto cambian en pesos tus dólares según dónde los tengas
 function cambioDolarTxt(){
-  const a = state.dolarAyer;
-  if(!a || a.tipo!==state.dolar.tipo || state.dolar.manual || !state.dolar.valor) return '';
-  const dif = state.dolar.valor - a.venta, pct = dif / a.venta * 100;
-  const nombre = nombreDolar(), cuando = a.fecha===moverDia(hoyISO(),-1) ? 'ayer' : 'el '+fechaCorta(a.fecha);
-  let usd = 0;
-  for(const b of state.billeteras) if(b.moneda==='USD'){ const s=saldoBilletera(b); if(s>0) usd += s; }
-  for(const i of state.inversiones) if(i.moneda==='USD') usd += Number(i.valorActual)||0;
-  if(Math.abs(dif) < 0.005) return `<div class="s dol-cambio">El ${nombre} está igual que ${cuando}.</div>`;
-  const sube = dif>0, signo = sube?'+':'−';
-  const pctTxt = Math.abs(pct).toLocaleString('es-AR',{maximumFractionDigits:1});
-  return `<div class="s dol-cambio">El ${nombre} ${sube?'subió':'bajó'} <b class="${sube?'pos':'neg'}">${signo}${plata(Math.abs(dif))} (${signo}${pctTxt}%)</b> desde ${cuando}.</div>
-    ${usd ? `<div class="s dol-cambio">Tus ${plata(Math.round(usd*100)/100,'USD')} valen <b class="${sube?'pos':'neg'}">${signo}${plata(Math.round(Math.abs(dif*usd)))}</b> ${sube?'más':'menos'} en pesos.</div>` : ''}`;
+  const ayer = state.dolarAyer?.valores || {}, hoyV = state.dolares?.valores || {};
+  const pct = (a,b) => { const p=(a-b)/b*100; return (p>0?'+':p<0?'−':'')+Math.abs(p).toLocaleString('es-AR',{maximumFractionDigits:1})+'%'; };
+  const plataSigno = n => (n>0?'+':n<0?'−':'')+plata(Math.round(Math.abs(n)));
+  const clase = n => n>0?'pos':n<0?'neg':'';
+  let html = '';
+  const a = ayer[state.dolar.tipo], h = hoyV[state.dolar.tipo];
+  if(a && h){
+    const dif = h.venta - a.venta, cuando = a.fecha===moverDia(hoyISO(),-1) ? 'ayer' : 'el '+fechaCorta(a.fecha);
+    html += Math.abs(dif)<0.005 ? `<div class="s dol-cambio">El ${nombreDolar()} está igual que ${cuando}.</div>`
+      : `<div class="s dol-cambio">El ${nombreDolar()} ${dif>0?'subió':'bajó'} <b class="${clase(dif)}">${dif>0?'+':'−'}${plata(Math.abs(dif))} (${pct(h.venta,a.venta)})</b> desde ${cuando}.</div>`;
+  }
+  const filas = dolaresPorLugar().map(g=>{
+    const ay = ayer[g.casa], ho = hoyV[g.casa]; if(!ay || !ho) return null;
+    return {...g, efecto:(ho.venta-ay.venta)*g.monto, pct:pct(ho.venta,ay.venta)};
+  }).filter(Boolean);
+  if(filas.length){
+    const total = filas.reduce((x,f)=>x+f.efecto,0);
+    html += `<div class="dol-imp">
+      <div class="label" style="margin:12px 0 2px">Cómo te afecta en pesos</div>
+      ${filas.map(f=>`<div class="dol-imp-fila"><span>${f.nombre}<small>${plata(Math.round(f.monto*100)/100,'USD')} · ${NOMBRE_CASA[f.casa]||f.casa} ${f.pct}</small></span><b class="${clase(f.efecto)}">${plataSigno(f.efecto)}</b></div>`).join('')}
+      ${filas.length>1?`<div class="dol-imp-fila dol-imp-total"><span>Total</span><b class="${clase(total)}">${plataSigno(total)}</b></div>`:''}
+    </div>`;
+  }
+  return html;
 }
 function moverDia(iso, n){ const d=new Date(iso+'T12:00'); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); }
 
@@ -589,14 +632,30 @@ window.addEventListener('online', ()=>{ if(state.usuario){ actualizarDolar(); ac
 //  - Exchanges cripto: publican su rendimiento anual (APY), que pasamos a TNA.
 // Las que no publican tasa (Naranja X, Brubank, Personal Pay, Cuenta DNI...) se siguen cargando a mano.
 const FUENTES_TASA = {
-  'mp|ARS':     {fondo:'Mercado Fondo - Clase A', texto:'el fondo de Mercado Pago (Mercado Fondo)'},
-  'uala|ARS':   {fondo:'Ualintec Ahorro Pesos - Clase A', texto:'el fondo de Ualá (Ualintec Ahorro Pesos)'},
-  'fiwind|ARS': {exchange:'fiwind', moneda:'ARS', texto:'lo que publica Fiwind'},
-  'lemon|USDT': {exchange:'lemoncash', moneda:'USDT', texto:'lo que publica Lemon'},
-  'belo|USDT':  {exchange:'belo', moneda:'USDT', texto:'lo que publica Belo'},
-  'ripio|USDT': {exchange:'ripio', moneda:'USDT', texto:'lo que publica Ripio'},
-  'fiwind|USDT':{exchange:'fiwind', moneda:'USDT', texto:'lo que publica Fiwind'},
-  'prex|USD':   {exchange:'prex', moneda:'USD', texto:'lo que publica Prex'},
+  // Billeteras con su propio fondo
+  'mp|ARS':        {fondo:'Mercado Fondo - Clase A', texto:'el fondo de Mercado Pago (Mercado Fondo)'},
+  'uala|ARS':      {fondo:'Ualintec Ahorro Pesos - Clase A', texto:'el fondo de Ualá (Ualintec Ahorro Pesos)'},
+  'cocos|ARS':     {fondo:'Cocos Ahorro - Clase A', texto:'el fondo de Cocos (Cocos Ahorro)'},
+  // Bancos: el fondo "money market" de cada uno (si tenés la plata invertida ahí)
+  'galicia|ARS':   {fondo:'Fima Premium - Clase A', texto:'el fondo de Galicia (Fima Premium)'},
+  'santander|ARS': {fondo:'Super Ahorro $ - Clase A', texto:'el fondo de Santander (Super Ahorro $)'},
+  'bbva|ARS':      {fondo:'FBA Money Market Pesos - Clase A', texto:'el fondo de BBVA (FBA Money Market Pesos)'},
+  'macro|ARS':     {fondo:'Pionero Pesos - Clase A', texto:'el fondo de Macro (Pionero Pesos)'},
+  'provincia|ARS': {fondo:'1822 Raices Ahorro Pesos - Clase A', texto:'el fondo de Provincia (1822 Raíces Ahorro Pesos)'},
+  'icbc|ARS':      {fondo:'Alpha Pesos - Clase A', texto:'el fondo de ICBC (Alpha Pesos)'},
+  'nacion|ARS':    {fondo:'Pellegrini Liquidez Pesos Clase A', texto:'el fondo de Nación (Pellegrini Liquidez Pesos)'},
+  // Exchanges y billeteras cripto: publican su rendimiento anual
+  'fiwind|ARS':    {exchange:'fiwind', moneda:'ARS', texto:'lo que publica Fiwind'},
+  'letsbit|ARS':   {exchange:'letsbit', moneda:'ARS', texto:"lo que publica Let'sBit"},
+  'lemon|USDT':    {exchange:'lemoncash', moneda:'USDT', texto:'lo que publica Lemon'},
+  'belo|USDT':     {exchange:'belo', moneda:'USDT', texto:'lo que publica Belo'},
+  'ripio|USDT':    {exchange:'ripio', moneda:'USDT', texto:'lo que publica Ripio'},
+  'fiwind|USDT':   {exchange:'fiwind', moneda:'USDT', texto:'lo que publica Fiwind'},
+  'letsbit|USDT':  {exchange:'letsbit', moneda:'USDT', texto:"lo que publica Let'sBit"},
+  'nexo|USDT':     {exchange:'nexo', moneda:'USDT', texto:'lo que publica Nexo'},
+  'satoshi|USDT':  {exchange:'satoshitango', moneda:'USDT', texto:'lo que publica SatoshiTango'},
+  'prex|USD':      {exchange:'prex', moneda:'USD', texto:'lo que publica Prex'},
+  'astropay|USD':  {exchange:'astropay', moneda:'USD', texto:'lo que publica AstroPay'},
 };
 function fuenteTasa(b){ const m = marcaDe(b.marca, b.nombre); return m ? FUENTES_TASA[m.id+'|'+b.moneda] || null : null; }
 function claveTasa(b){ const m = marcaDe(b.marca, b.nombre); return m ? m.id+'|'+b.moneda : ''; }
@@ -676,6 +735,11 @@ const MARCAS = [
   {id:'ciudad',    nombre:'Ciudad',       ini:'C',    bg:'#0094d9', fg:'#fff', buscar:['ciudad']},
   {id:'credicoop', nombre:'Credicoop',    ini:'CC',   bg:'#00965e', fg:'#fff', buscar:['credicoop']},
   {id:'cordoba',   nombre:'Bancor',       ini:'BC',   bg:'#00548c', fg:'#fff', buscar:['bancor','cordoba','córdoba']},
+  {id:'cocos',     nombre:'Cocos',        ini:'CC',   bg:'#0a5cff', fg:'#fff', buscar:['cocos']},
+  {id:'letsbit',   nombre:"Let'sBit",     ini:'LB',   bg:'#5a2ee6', fg:'#fff', buscar:['letsbit',"let'sbit",'lets bit']},
+  {id:'nexo',      nombre:'Nexo',         ini:'NX',   bg:'#1a4dff', fg:'#fff', buscar:['nexo']},
+  {id:'satoshi',   nombre:'SatoshiTango', ini:'ST',   bg:'#f7931a', fg:'#1a1a1a', buscar:['satoshi','satoshitango']},
+  {id:'astropay',  nombre:'AstroPay',     ini:'AP',   bg:'#e5002b', fg:'#fff', buscar:['astropay','astro pay']},
 ];
 // Servicios típicos de mensualidad (para el ícono de color)
 // ---------- Íconos propios (estilo iPhone: trazo fino, puntas redondeadas) ----------
