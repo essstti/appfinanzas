@@ -1926,7 +1926,8 @@ celuOscuro.addEventListener('change', aplicarTema); // si cambiás el modo del c
 // ============================================================
 //  EFECTO AL BAJAR
 //  - Los bloques que vienen de abajo aparecen agrupados (montados sobre el de arriba),
-//    más chicos y borrosos, y se despliegan a medida que suben.
+//    más chicos y transparentes, y se despliegan a medida que suben.
+//  - Sin desenfoque (blur): en el iPhone el blur en movimiento dejaba rayitas fucsias sueltas.
 //  - Los que se van por arriba se achican y se apilan atrás del siguiente.
 //  Si todo entra en la pantalla, no pasa nada.
 // ============================================================
@@ -1939,22 +1940,20 @@ function efectoScroll(){
   const hayParaBajar = document.documentElement.scrollHeight > window.innerHeight + 20;
   const piso = window.innerHeight - ($('#nav').offsetHeight || 0); // donde empieza la barra de abajo
   for(const el of bloques){
-    if(!hayParaBajar || !state.usuario){ el.style.transform = el.style.filter = el.style.opacity = el.style.zIndex = ''; continue; }
+    if(!hayParaBajar || !state.usuario){ el.style.transform = el.style.opacity = el.style.zIndex = ''; continue; }
     const r = el.getBoundingClientRect();
     const abajo  = 1 - limitar((piso - r.top) / ZONA_ABAJO, 0, 1);   // 1 = recién asomando abajo, 0 = ya desplegado
     const arriba = 1 - limitar(r.bottom / ZONA_ARRIBA, 0, 1);        // 1 = casi fuera por arriba, 0 = normal
     if(abajo > 0){
       el.style.transform = `translateY(${-abajo*30}px) scale(${1-abajo*.06})`;
-      el.style.filter = `blur(${(abajo*4).toFixed(1)}px)`;
-      el.style.opacity = (1-abajo*.5).toFixed(2);
+      el.style.opacity = (1-abajo*.6).toFixed(2);
       el.style.zIndex = 0;  // queda atrás del bloque de arriba, como agrupado
     } else if(arriba > 0){
       el.style.transform = `translateY(${arriba*22}px) scale(${1-arriba*.08})`;
-      el.style.filter = arriba>.3 ? `blur(${((arriba-.3)*3).toFixed(1)}px)` : '';
       el.style.opacity = (1-arriba*.7).toFixed(2);
       el.style.zIndex = 0;  // se mete atrás del siguiente, como apilándose
     } else {
-      el.style.transform = el.style.filter = el.style.opacity = el.style.zIndex = '';
+      el.style.transform = el.style.opacity = el.style.zIndex = '';
     }
   }
 }
