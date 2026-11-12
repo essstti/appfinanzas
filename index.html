@@ -291,6 +291,17 @@ nav button.on::after{content:'';position:absolute;left:30%;right:30%;bottom:-2px
 .cuota.atrasada{box-shadow:0 0 0 1.5px var(--red)}
 /* Botón "La pagó otra persona" en la hoja de pago */
 .otra-op{margin-top:14px;display:flex;align-items:center;gap:4px}
+/* Historial mes a mes (Gastos) */
+.hist-fila{display:grid;grid-template-columns:repeat(3,1fr);gap:2px 6px;align-items:center;width:100%;text-align:right;padding:10px 0;border-bottom:1.5px dashed var(--punteo);font-size:13px}
+.hist-fila>span{white-space:nowrap}
+.hist-fila>span:first-child{grid-column:1/-1;text-align:left;font-weight:700;margin-bottom:2px}
+.hist-tit{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;padding-top:0}
+.hist-tit>span:first-child{display:none}
+.hist-fila.en-uso>span:first-child{color:var(--accent)}
+/* Historial de cuotas terminadas */
+.hist-mes{margin:16px 0 0}
+.hist-mes:first-child{margin-top:2px}
+.hist-term .pill{margin-top:6px}
 /* Tabla de los cuatro dólares */
 .dol-fila{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:8px;align-items:center;width:100%;text-align:right;padding:11px 0;border-bottom:1.5px dashed var(--punteo);font-size:14px}
 .dol-fila>span:first-child{text-align:left;font-weight:700;display:flex;align-items:center;gap:8px}
@@ -931,6 +942,34 @@ function marcarProximos(){
   const c = [...document.querySelectorAll('#main .cuota')].find(x=>!x.querySelector('.pill') && !x.classList.contains('atrasada'));
   if(c) c.classList.add('proximo');
 }
+// ----- Cuotas terminadas -----
+// Fecha en que se terminó de pagar. Las cargadas antes de esta función no la guardaban: se busca el último pago en los movimientos.
+function fechaTerminada(d){
+  if(d.terminada) return d.terminada;
+  const pagos = state.movimientos.filter(m=>(m.categoria==='cuotas'||m.categoria==='otros_i') && String(m.nota||'').startsWith(d.descripcion+' (')).map(m=>m.fecha).sort();
+  return pagos.length ? pagos[pagos.length-1] : null;
+}
+function historialTerminadas(lista){
+  if(!lista.length) return '';
+  const grupos = {};
+  for(const d of lista){ const f=fechaTerminada(d), k=f?f.slice(0,7):'sin'; (grupos[k] ||= []).push({d, f}); }
+  const claves = Object.keys(grupos).sort((a,b)=> a==='sin'?1 : b==='sin'?-1 : b.localeCompare(a));
+  return `
+    <h2>Historial: cuotas terminadas</h2>
+    <div class="card hist-term">
+      ${claves.map(k=>`
+        <div class="label hist-mes">${k==='sin'?'Sin fecha':nombreMes(k)}</div>
+        ${grupos[k].map(({d,f})=>`
+          <div class="item" onclick="formDeuda('${d.id}')">
+            ${d.clase==='tarjeta'?miniTarjeta(d):`<div class="ico">${ic('personas')}</div>`}
+            <div class="grow"><div class="t">${esc(d.descripcion)}</div>
+              <div class="s">${d.cuotasTotales} cuota${d.cuotasTotales===1?'':'s'} de ${plata(d.montoCuota,d.moneda)}</div>
+              <div class="s">${f?`Terminada el ${fechaCorta(f)}`:'No sabemos cuándo se terminó'}</div></div>
+            <div style="text-align:right"><div class="amt">${plata(d.cuotasTotales*d.montoCuota,d.moneda)}</div><span class="pill">${ici('tilde')}Pagada</span></div>
+          </div>`).join('')}`).join('')}
+    </div>`;
+}
+
 // ----- Atrasadas -----
 // Cuándo se cargó algo (las nuevas lo guardan; las viejas lo sacan del código de su id, que tiene la fecha adentro)
 function creadaEl(x){
@@ -1227,6 +1266,30 @@ function comparacionMes(ym){
   if(Math.abs(dif)<1) return `<div class="compara">Igual que en ${mesAnt}</div>`;
   return `<div class="compara ${mas?'sube':'baja'}"><b>${mas?'↑':'↓'} ${Math.abs(dif).toFixed(0)}%</b> ${mas?'más':'menos'} que en ${mesAnt}</div>`;
 }
+// ----- Historial mes a mes: cuánto gastaste y cuánto entró cada mes (todo pasado a pesos) -----
+function historialMeses(){
+  const porMes = {};
+  for(const m of state.movimientos){
+    const ym = m.fecha.slice(0,7), p = aPesos(m.monto, monedaDe(m)); if(p==null) continue;
+    const x = porMes[ym] ||= {gastos:0, ingresos:0};
+    if(m.tipo==='gasto') x.gastos += p; else x.ingresos += p;
+  }
+  const meses = Object.keys(porMes).sort().reverse();
+  if(!meses.length) return '';
+  const sig = n => (n>0?'+':n<0?'−':'')+plata(Math.round(Math.abs(n)));
+  return `
+    <h2>Historial mes a mes</h2>
+    <div class="card hist">
+      <div class="hist-fila hist-tit"><span>Mes</span><span>Gastos</span><span>Ingresos</span><span>Quedó</span></div>
+      ${meses.map(ym=>{ const x=porMes[ym], q=x.ingresos-x.gastos;
+        return `<button class="hist-fila${ym===mesVisto?' en-uso':''}" onclick="mesVisto='${ym}';render()">
+          <span>${nombreMes(ym)}</span><span>${plata(Math.round(x.gastos))}</span><span class="pos">${x.ingresos?plata(Math.round(x.ingresos)):'—'}</span>
+          <span class="${q>=0?'pos':'neg'}">${sig(q)}</span></button>`; }).join('')}
+      <p class="s" style="margin:10px 0 0">Los dólares están pasados a pesos con el dólar de hoy.</p>
+      <p class="s" style="margin:2px 0 0">Tocá un mes para ver sus movimientos arriba.</p>
+    </div>`;
+}
+
 function vGastos(){
   const lista = state.movimientos.filter(m=>m.fecha.startsWith(mesVisto)).sort((a,b)=>b.fecha.localeCompare(a.fecha) || b.id.localeCompare(a.id));
   const gARS = lista.filter(m=>m.tipo==='gasto'&&monedaDe(m)==='ARS').reduce((a,m)=>a+m.monto,0);
@@ -1260,7 +1323,8 @@ function vGastos(){
             <div class="grow"><div class="t">${esc(m.nota||c.nombre)}</div><div class="s">${c.nombre} · ${esc(b?b.nombre:'—')}</div></div>
             <div class="amt ${m.tipo==='ingreso'?'pos':''}">${m.tipo==='ingreso'?'+':'-'}${plata(m.monto,monedaDe(m))}</div></div>`;
         }).join('')}
-      </div>`).join('') : `<div class="card empty">No hay movimientos este mes</div>`}`;
+      </div>`).join('') : `<div class="card empty">No hay movimientos este mes</div>`}
+    ${historialMeses()}`;
 }
 
 // ----- Cuotas / Deudas -----
@@ -1320,7 +1384,7 @@ function vCuotas(){
     </div>
     ${activas.length?`<h2 class="con-ico">${ici('tarjeta')} Cuotas</h2>`:''}`:''}
     ${activas.slice().sort((a,b)=>(cuotaAtrasada(b)-cuotaAtrasada(a)) || diasHasta(a.diaVencimiento)-diasHasta(b.diaVencimiento)).map(tarjeta).join('') || (filtroDeuda==='debo' && state.suscripciones.length ? '' : `<div class="card empty">${filtroDeuda==='debo'?'No tenés cuotas pendientes 🎉':'Nadie te debe nada'}</div>`)}
-    ${terminadas.length?`<h2>Terminadas</h2>${terminadas.map(tarjeta).join('')}`:''}`;
+    ${historialTerminadas(terminadas)}`;
 }
 
 // Hoja de pago compartida por cuotas y mensualidades.
@@ -1408,6 +1472,7 @@ function pagarCuota(id){
     alConfirmar: (b, monto, otra) => {
       d.cuotasPagadas = Math.min(d.cuotasTotales, d.cuotasPagadas+1);
       d.ultimoPago = mesActual();
+      if(d.cuotasPagadas>=d.cuotasTotales) d.terminada = hoyISO(); // queda en el historial de terminadas
       if(!b){ // La pagó otra persona: no sale de ninguna billetera
         if(otra.devolver) anotarDevolucion(otra.quien, `${d.descripcion} (cuota ${d.cuotasPagadas}/${d.cuotasTotales})`, monto, d.moneda);
         save(); cerrarSheet(); render();
@@ -1813,8 +1878,10 @@ function guardarDeuda(id){
   if(id){
     const d = state.deudas.find(x=>x.id===id);
     if(cuotasPagadas > d.cuotasPagadas) datos.ultimoPago = mesActual(); // si subiste "Ya pagadas" a mano, cuenta como pagada este mes
+    // Historial: si ahora quedó completa, se terminó hoy; si la bajaste, deja de estar terminada
+    datos.terminada = cuotasPagadas>=cuotasTotales ? (d.terminada || hoyISO()) : null;
     Object.assign(d,datos);
-  } else state.deudas.push({id:uid(), creada:Date.now(), ...datos});
+  } else state.deudas.push({id:uid(), creada:Date.now(), ...datos, terminada: cuotasPagadas>=cuotasTotales ? hoyISO() : null});
   filtroDeuda = dir;
   save(); cerrarSheet(); render(); toast('Guardado');
 }
