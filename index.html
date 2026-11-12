@@ -298,6 +298,8 @@ nav button.on::after{content:'';position:absolute;left:30%;right:30%;bottom:-2px
 .dol-tit{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;padding-top:0}
 .dol-tit>span:first-child{font-weight:400}
 .dol-fila.en-uso .amt{color:var(--accent)}
+.dol-cambio{margin-top:10px;font-size:12.5px;color:var(--muted)}
+.dol-cambio+.dol-cambio{margin-top:2px}
 /* "● en vivo" al lado del dólar: el puntito titila */
 .vivo{color:var(--green);white-space:nowrap}
 .vivo{animation:titila 2s steps(2,end) infinite}
@@ -499,10 +501,43 @@ async function actualizarDolar(forzar=false){
     if(elegido && forzar && state.dolar.manual){ state.dolar.valor = elegido.venta; state.dolar.actualizado = Date.now(); state.dolar.manual = false; cambio = true; }
     save(); if(cambio || forzar) renderSuave();
     if(forzar) toast('Dólar actualizado');
+    actualizarDolarAyer();
   }catch(e){
     if(forzar) toast('Sin conexión: uso la última cotización');
   }
 }
+
+// ---------- Cuánto cambió el dólar desde ayer ----------
+// Busca el cierre del día anterior (ArgentinaDatos guarda uno por día). Si ayer fue feriado, va para atrás hasta 6 días.
+async function actualizarDolarAyer(){
+  const tipo = state.dolar.tipo, hoy = hoyISO();
+  if(state.dolarAyer && state.dolarAyer.tipo===tipo && state.dolarAyer.buscado===hoy) return;
+  try{
+    for(let i=1;i<=6;i++){
+      const d = new Date(); d.setDate(d.getDate()-i);
+      const r = await fetch(`https://api.argentinadatos.com/v1/cotizaciones/dolares/${tipo}/${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`, {cache:'no-store'});
+      if(!r.ok) continue;
+      const x = await r.json();
+      if(x && x.venta){ state.dolarAyer = {tipo, buscado:hoy, fecha:x.fecha, venta:Number(x.venta)}; save(); renderSuave(); return; }
+    }
+  }catch(e){ /* sin internet: se vuelve a intentar en la próxima actualización */ }
+}
+// Texto para Inicio: cuánto subió o bajó, y cuánto cambian en pesos los dólares que tenés
+function cambioDolarTxt(){
+  const a = state.dolarAyer;
+  if(!a || a.tipo!==state.dolar.tipo || state.dolar.manual || !state.dolar.valor) return '';
+  const dif = state.dolar.valor - a.venta, pct = dif / a.venta * 100;
+  const nombre = nombreDolar(), cuando = a.fecha===moverDia(hoyISO(),-1) ? 'ayer' : 'el '+fechaCorta(a.fecha);
+  let usd = 0;
+  for(const b of state.billeteras) if(b.moneda==='USD'){ const s=saldoBilletera(b); if(s>0) usd += s; }
+  for(const i of state.inversiones) if(i.moneda==='USD') usd += Number(i.valorActual)||0;
+  if(Math.abs(dif) < 0.005) return `<div class="s dol-cambio">El ${nombre} está igual que ${cuando}.</div>`;
+  const sube = dif>0, signo = sube?'+':'−';
+  const pctTxt = Math.abs(pct).toLocaleString('es-AR',{maximumFractionDigits:1});
+  return `<div class="s dol-cambio">El ${nombre} ${sube?'subió':'bajó'} <b class="${sube?'pos':'neg'}">${signo}${plata(Math.abs(dif))} (${signo}${pctTxt}%)</b> desde ${cuando}.</div>
+    ${usd ? `<div class="s dol-cambio">Tus ${plata(Math.round(usd*100)/100,'USD')} valen <b class="${sube?'pos':'neg'}">${signo}${plata(Math.round(Math.abs(dif*usd)))}</b> ${sube?'más':'menos'} en pesos.</div>` : ''}`;
+}
+function moverDia(iso, n){ const d=new Date(iso+'T12:00'); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); }
 
 // ---------- Cotización del USDT (precio de VENTA en el exchange elegido) ----------
 const EXCHANGES_USDT = [
@@ -1042,6 +1077,7 @@ function vInicio(){
         return `<button class="dol-fila${uso?' en-uso':''}" onclick="usarDolar('${t.id}')">
           <span>${t.nombre}${uso?` <span class="pill">En uso</span>`:''}</span>
           <span>${v&&v.compra?plata(v.compra):'—'}</span><span class="amt">${v?plata(v.venta):'—'}</span></button>`; }).join('')}
+      ${cambioDolarTxt()}
       <div class="row" style="margin-top:12px">
         <span class="s">${state.dolar.manual?`Usás un dólar manual: ${plata(state.dolar.valor)}`:(state.dolares?.actualizado && Date.now()-state.dolares.actualizado<5*60000?'<span class="vivo">● en vivo</span>':'Tocá uno para usarlo en la app')}</span>
         <button class="pill sin-sello" onclick="actualizarDolar(true);actualizarUSDT(true)">${ici('actualizar')} Actualizar</button>
@@ -1455,6 +1491,7 @@ function usarDolar(tipo){
   state.dolar.tipo = tipo; state.dolar.manual = false;
   if(v){ state.dolar.valor = v.venta; state.dolar.actualizado = Date.now(); }
   save(); renderSuave(); toast(`Ahora la app usa el dólar ${TIPOS_DOLAR.find(t=>t.id===tipo).nombre}`);
+  actualizarDolarAyer();
   if(!v) actualizarDolar(true);
 }
 function cambiarDolar(tipo){ state.dolar.tipo=tipo; state.dolar.manual=false; save(); render(); actualizarDolar(true); }
