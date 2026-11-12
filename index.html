@@ -289,6 +289,13 @@ nav button.on::after{content:'';position:absolute;left:30%;right:30%;bottom:-2px
   animation:sellar .45s .25s cubic-bezier(.3,1.6,.5,1) both, respirar 3.2s 1s ease-in-out infinite}
 .linea .atrasada .ico,.linea .atrasada .mini-card{outline:2px solid var(--red);outline-offset:3px}
 .cuota.atrasada{box-shadow:0 0 0 1.5px var(--red)}
+/* Tabla de los cuatro dólares */
+.dol-fila{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:8px;align-items:center;width:100%;text-align:right;padding:11px 0;border-bottom:1.5px dashed var(--punteo);font-size:14px}
+.dol-fila>span:first-child{text-align:left;font-weight:700;display:flex;align-items:center;gap:8px}
+.dol-fila .pill{font-size:9px;padding:2px 6px}
+.dol-tit{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;padding-top:0}
+.dol-tit>span:first-child{font-weight:400}
+.dol-fila.en-uso .amt{color:var(--accent)}
 /* "● en vivo" al lado del dólar: el puntito titila */
 .vivo{color:var(--green);white-space:nowrap}
 .vivo{animation:titila 2s steps(2,end) infinite}
@@ -469,21 +476,27 @@ function saludo(){
 
 // ---------- Cotización del dólar ----------
 async function actualizarDolar(forzar=false){
-  if(state.dolar.manual && !forzar) return;
-  const hace = state.dolar.actualizado ? (Date.now()-state.dolar.actualizado) : Infinity;
+  // Trae los cuatro dólares juntos (para la tabla de Inicio) y usa el que elegiste en Ajustes
+  const hace = state.dolares?.actualizado ? (Date.now()-state.dolares.actualizado) : Infinity;
   if(!forzar && hace < 1000*50) return; // como mucho una vez por minuto
   try{
-    const r = await fetch('https://dolarapi.com/v1/dolares/' + state.dolar.tipo, {cache:'no-store'});
+    const r = await fetch('https://dolarapi.com/v1/dolares', {cache:'no-store'});
     if(!r.ok) throw 0;
-    const d = await r.json();
-    if(d && d.venta){
-      const cambio = Number(d.venta)!==state.dolar.valor || state.dolar.manual;
-      state.dolar.valor = Number(d.venta);
+    const lista = await r.json();
+    const antes = JSON.stringify(state.dolares?.valores||{});
+    const valores = {};
+    for(const d of lista){ if(TIPOS_DOLAR.some(t=>t.id===d.casa) && d.venta) valores[d.casa] = {compra:Number(d.compra)||null, venta:Number(d.venta)}; }
+    state.dolares = {valores, actualizado:Date.now()};
+    let cambio = JSON.stringify(valores)!==antes;
+    const elegido = valores[state.dolar.tipo];
+    if(elegido && !state.dolar.manual){
+      cambio = cambio || elegido.venta!==state.dolar.valor;
+      state.dolar.valor = elegido.venta;
       state.dolar.actualizado = Date.now();
-      state.dolar.manual = false;
-      save(); if(cambio || forzar) renderSuave();
-      if(forzar) toast('Dólar actualizado');
     }
+    if(elegido && forzar && state.dolar.manual){ state.dolar.valor = elegido.venta; state.dolar.actualizado = Date.now(); state.dolar.manual = false; cambio = true; }
+    save(); if(cambio || forzar) renderSuave();
+    if(forzar) toast('Dólar actualizado');
   }catch(e){
     if(forzar) toast('Sin conexión: uso la última cotización');
   }
@@ -1020,11 +1033,19 @@ function vInicio(){
       }).join('') : `<div class="empty">Cargá tu primer gasto con el botón <b>+</b></div>`}
     </div>
 
-    <div class="row" style="margin:6px 4px 20px">
-      <span class="s">Dólar ${TIPOS_DOLAR.find(t=>t.id===state.dolar.tipo)?.nombre}: ${state.dolar.valor?plata(state.dolar.valor):'sin dato'}${state.dolar.manual?' (manual)':''}${!state.dolar.manual && state.dolar.actualizado && Date.now()-state.dolar.actualizado<5*60000?' <span class="vivo">● en vivo</span>':''}</span>
-      <button class="pill sin-sello" onclick="actualizarDolar(true);actualizarUSDT(true)">${ici('actualizar')} Actualizar</button>
+    <h2>Dólar hoy</h2>
+    <div class="card dolares">
+      <div class="dol-fila dol-tit"><span>Tipo</span><span>Compra</span><span>Venta</span></div>
+      ${TIPOS_DOLAR.map(t=>{ const v=state.dolares?.valores?.[t.id], uso=state.dolar.tipo===t.id && !state.dolar.manual;
+        return `<button class="dol-fila${uso?' en-uso':''}" onclick="usarDolar('${t.id}')">
+          <span>${t.nombre}${uso?` <span class="pill">En uso</span>`:''}</span>
+          <span>${v&&v.compra?plata(v.compra):'—'}</span><span class="amt">${v?plata(v.venta):'—'}</span></button>`; }).join('')}
+      <div class="row" style="margin-top:12px">
+        <span class="s">${state.dolar.manual?`Usás un dólar manual: ${plata(state.dolar.valor)}`:(state.dolares?.actualizado && Date.now()-state.dolares.actualizado<5*60000?'<span class="vivo">● en vivo</span>':'Tocá uno para usarlo en la app')}</span>
+        <button class="pill sin-sello" onclick="actualizarDolar(true);actualizarUSDT(true)">${ici('actualizar')} Actualizar</button>
+      </div>
     </div>
-    ${hayUSDT()?`<div class="s" style="margin:-12px 4px 20px">USDT venta ${nombreExchange()}: ${state.usdt.valor?plata(state.usdt.valor):'sin dato'}${state.usdt.manual?' (manual)':''}</div>`:''}`;
+    ${hayUSDT()?`<div class="s" style="margin:8px 4px 20px">USDT venta ${nombreExchange()}: ${state.usdt.valor?plata(state.usdt.valor):'sin dato'}${state.usdt.manual?' (manual)':''}</div>`:''}`;
 }
 
 // ----- Gráfico: gastos de los últimos 6 meses -----
@@ -1369,6 +1390,15 @@ function cambiarExchange(id){ state.usdt.exchange=id; state.usdt.manual=false; s
 function usdtManual(){
   const v = num($('#usdtManual').value); if(!v){ toast('Poné un valor'); return; }
   state.usdt = {...state.usdt, valor:v, manual:true, actualizado:Date.now()}; save(); render(); toast('Precio guardado');
+}
+// Tocar un dólar en la tabla de Inicio: pasa a ser el que usa la app para todas las cuentas
+function usarDolar(tipo){
+  if(state.dolar.tipo===tipo && !state.dolar.manual) return;
+  const v = state.dolares?.valores?.[tipo];
+  state.dolar.tipo = tipo; state.dolar.manual = false;
+  if(v){ state.dolar.valor = v.venta; state.dolar.actualizado = Date.now(); }
+  save(); renderSuave(); toast(`Ahora la app usa el dólar ${TIPOS_DOLAR.find(t=>t.id===tipo).nombre}`);
+  if(!v) actualizarDolar(true);
 }
 function cambiarDolar(tipo){ state.dolar.tipo=tipo; state.dolar.manual=false; save(); render(); actualizarDolar(true); }
 function dolarManual(){
