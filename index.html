@@ -289,6 +289,8 @@ nav button.on::after{content:'';position:absolute;left:30%;right:30%;bottom:-2px
   animation:sellar .45s .25s cubic-bezier(.3,1.6,.5,1) both, respirar 3.2s 1s ease-in-out infinite}
 .linea .atrasada .ico,.linea .atrasada .mini-card{outline:2px solid var(--red);outline-offset:3px}
 .cuota.atrasada{box-shadow:0 0 0 1.5px var(--red)}
+/* Botón "La pagó otra persona" en la hoja de pago */
+.otra-op{margin-top:14px;display:flex;align-items:center;gap:4px}
 /* Tabla de los cuatro dólares */
 .dol-fila{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:8px;align-items:center;width:100%;text-align:right;padding:11px 0;border-bottom:1.5px dashed var(--punteo);font-size:14px}
 .dol-fila>span:first-child{text-align:left;font-weight:700;display:flex;align-items:center;gap:8px}
@@ -1223,7 +1225,8 @@ function vCuotas(){
 
 // Hoja de pago compartida por cuotas y mensualidades.
 // Siempre registra el movimiento (así se descuenta de la billetera) con la fecha de hoy.
-function hojaPago({titulo, detalle, monto, moneda, preferida, pregunta, alConfirmar}){
+// otraPersona = true: muestra la opción "La pagó otra persona" (no sale de ninguna billetera; si hay que devolverla, se anota como deuda)
+function hojaPago({titulo, detalle, monto, moneda, preferida, pregunta, alConfirmar, otraPersona=false}){
   // Primero las billeteras de la misma moneda
   const billes = [...state.billeteras].sort((a,b)=>(b.moneda===moneda)-(a.moneda===moneda));
   const elegida = billes.find(b=>b.id===preferida && b.moneda===moneda) || billes[0];
@@ -1232,10 +1235,41 @@ function hojaPago({titulo, detalle, monto, moneda, preferida, pregunta, alConfir
     <p class="sub" style="margin-bottom:2px">${detalle}</p>
     <div class="mid">${plata(monto,moneda)}</div>
     ${moneda!=='ARS'&&aPesos(monto,moneda)!=null?`<div class="s">${enPesosTxt(monto,moneda)} al dólar ${nombreDolar()} de hoy</div>`:''}
-    <label>${pregunta}</label>
-    ${chipsBilleteras('pagoBille', elegida?.id, billes)}
-    <div class="conv" id="pagoConv"></div>
+    <div id="pagoConBille">
+      <label>${pregunta}</label>
+      ${chipsBilleteras('pagoBille', elegida?.id, billes)}
+      <div class="conv" id="pagoConv"></div>
+    </div>
+    ${otraPersona?`
+    <button type="button" class="btn sec sm otra-op" id="pagoOtra">${ici('personas')} La pagó otra persona</button>
+    <div id="pagoOtraCaja" hidden>
+      <label>¿Quién la pagó?</label>
+      <input id="pagoQuien" placeholder="Ej: Mamá" maxlength="30" value="${esc(state.ultimoPagador||'')}">
+      <label>¿Se lo tenés que devolver?</label>
+      <div class="seg" id="pagoDevolver"><button type="button" data-v="no" class="on">No</button><button type="button" data-v="si">Sí, se lo devuelvo</button></div>
+      <p class="conv" id="pagoOtraTxt"></p>
+    </div>`:''}
     <div class="actions"><button class="btn" id="pagoOk">Confirmar</button></div>`);
+  let otra = false, devolver = false;
+  const textoOtra = () => { if(!otraPersona) return;
+    const q = esc($('#pagoQuien').value.trim()||'esa persona');
+    $('#pagoOtraTxt').innerHTML = `No se descuenta de ninguna billetera.<br>${devolver?`Se anota en «Lo que debo» que le debés ${plata(monto,moneda)} a ${q}.`:'Queda pagada y listo.'}`;
+  };
+  if(otraPersona){
+    $('#pagoOtra').onclick = () => {
+      otra = !otra;
+      $('#pagoOtraCaja').hidden = !otra; $('#pagoConBille').hidden = otra;
+      $('#pagoOtra').innerHTML = otra ? `${ici('billetera')} Mejor la pago yo` : `${ici('personas')} La pagó otra persona`;
+      if(otra && !$('#pagoQuien').value) $('#pagoQuien').focus();
+      textoOtra();
+    };
+    $('#pagoQuien').addEventListener('input', textoOtra);
+    document.querySelectorAll('#pagoDevolver button').forEach(x=>x.onclick=()=>{
+      devolver = x.dataset.v==='si';
+      document.querySelectorAll('#pagoDevolver button').forEach(y=>y.classList.toggle('on', y===x));
+      textoOtra();
+    });
+  }
   const montoEn = id => { const b=billetera(id); return b ? convertir(monto, moneda, b.moneda) : null; };
   const mostrar = () => {
     const b = billetera($('#pagoBille').dataset.v); if(!b) return;
@@ -1246,10 +1280,21 @@ function hojaPago({titulo, detalle, monto, moneda, preferida, pregunta, alConfir
   };
   $('#pagoBille').addEventListener('cambio', mostrar); mostrar();
   $('#pagoOk').onclick = () => {
+    if(otra){
+      const quien = $('#pagoQuien').value.trim(); if(!quien) return toast('Poné quién la pagó');
+      state.ultimoPagador = quien;
+      return alConfirmar(null, monto, {quien, devolver});
+    }
     const b = billetera($('#pagoBille').dataset.v); if(!b) return toast('Elegí una billetera');
     const m = montoEn(b.id); if(m==null) return toast('Falta la cotización del dólar');
     alConfirmar(b, Math.round(m*100)/100);
   };
+}
+
+// Si alguien pagó algo tuyo y se lo tenés que devolver: queda en "Lo que debo" como deuda con esa persona
+function anotarDevolucion(quien, descripcion, monto, moneda){
+  state.deudas.push({id:uid(), creada:Date.now(), clase:'persona', direccion:'debo', descripcion, quien, moneda,
+    montoCuota:monto, cuotasTotales:1, cuotasPagadas:0, diaVencimiento:0, red:'', marca:''});
 }
 
 function pagarCuota(id){
@@ -1259,9 +1304,15 @@ function pagarCuota(id){
     titulo: `${debo?'Pagar cuota':'Registrar cobro'} ${d.cuotasPagadas+1}/${d.cuotasTotales}`,
     detalle: esc(d.descripcion), monto: d.montoCuota, moneda: d.moneda,
     pregunta: debo ? '¿De qué billetera sale?' : '¿A qué billetera entra?',
-    alConfirmar: (b, monto) => {
+    otraPersona: debo,
+    alConfirmar: (b, monto, otra) => {
       d.cuotasPagadas = Math.min(d.cuotasTotales, d.cuotasPagadas+1);
       d.ultimoPago = mesActual();
+      if(!b){ // La pagó otra persona: no sale de ninguna billetera
+        if(otra.devolver) anotarDevolucion(otra.quien, `${d.descripcion} (cuota ${d.cuotasPagadas}/${d.cuotasTotales})`, monto, d.moneda);
+        save(); cerrarSheet(); render();
+        return toast(otra.devolver ? `Cuota registrada · le debés a ${otra.quien}` : `Cuota registrada · la pagó ${otra.quien}`);
+      }
       const conv = b.moneda!==d.moneda ? ` · ${plata(d.montoCuota,d.moneda)}` : '';
       state.movimientos.push({id:uid(), tipo: debo?'gasto':'ingreso', monto, billeteraId:b.id,
         categoria: debo?'cuotas':'otros_i', fecha:hoyISO(), nota:`${d.descripcion} (${d.cuotasPagadas}/${d.cuotasTotales})${conv}`});
@@ -1276,8 +1327,14 @@ function pagarMensualidad(id){
   hojaPago({
     titulo: `Pagar ${esc(su.nombre)}`, detalle: nombreMes(mesActual()), monto: su.monto, moneda: su.moneda,
     preferida: su.billeteraId, pregunta: '¿De qué billetera sale?',
-    alConfirmar: (b, monto) => {
+    otraPersona: true,
+    alConfirmar: (b, monto, otra) => {
       su.ultimoPago = mesActual();
+      if(!b){
+        if(otra.devolver) anotarDevolucion(otra.quien, `${su.nombre} (${nombreMes(mesActual())})`, monto, su.moneda);
+        save(); cerrarSheet(); render();
+        return toast(otra.devolver ? `Mensualidad pagada · le debés a ${otra.quien}` : `Mensualidad pagada · la pagó ${otra.quien}`);
+      }
       const conv = b.moneda!==su.moneda ? ` · ${plata(su.monto,su.moneda)}` : '';
       state.movimientos.push({id:uid(), tipo:'gasto', monto, billeteraId:b.id, categoria:'subs', fecha:hoyISO(),
         nota:`${su.nombre} (${nombreMes(mesActual())})${conv}`});
