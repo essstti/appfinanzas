@@ -291,7 +291,17 @@ nav button.on::after{content:'';position:absolute;left:30%;right:30%;bottom:-2px
 .cuota.atrasada{box-shadow:0 0 0 1.5px var(--red)}
 /* Botón "La pagó otra persona" en la hoja de pago */
 .otra-op{margin-top:14px;display:flex;align-items:center;gap:4px}
-/* Historial mes a mes (Gastos) */
+/* Nombre del mes que abre la lista de meses */
+.mes-btn{display:flex;align-items:center;gap:6px;width:auto!important;padding:6px 10px!important;border-radius:4px}
+.mes-btn .i{width:16px;height:16px}
+/* Resumen del mes en Gastos */
+.mes-res{margin-top:14px;border-top:1.5px dashed var(--punteo);padding-top:4px}
+.mes-res-fila{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:6px 0;font-size:13.5px}
+.mes-res-fila small{color:var(--muted);font-size:11px;margin-left:4px}
+.mes-res-fila b{white-space:nowrap}
+.mes-res-total{border-top:3px double var(--txt);margin-top:4px;padding-top:8px;font-weight:700}
+.hist .pill{font-size:9px;padding:2px 6px;margin-left:4px;vertical-align:1px}
+/* Lista de meses */
 .hist-fila{display:grid;grid-template-columns:repeat(3,1fr);gap:2px 6px;align-items:center;width:100%;text-align:right;padding:10px 0;border-bottom:1.5px dashed var(--punteo);font-size:13px}
 .hist-fila>span{white-space:nowrap}
 .hist-fila>span:first-child{grid-column:1/-1;text-align:left;font-weight:700;margin-bottom:2px}
@@ -756,6 +766,7 @@ const MARCAS = [
 // ---------- Íconos propios (estilo iPhone: trazo fino, puntas redondeadas) ----------
 // Lo que tiene class="ac" se pinta con el color del modo: azul de día, cereza de noche.
 const ICONOS = {
+  'flecha-abajo':'<path d="M6 9l6 6 6-6"/>',
   casa:'<path d="M3.5 11 12 3.8l8.5 7.2"/><path d="M5.8 9.2V20h12.4V9.2"/><path class="ac" d="M10 20v-5.2h4V20"/>',
   recibo:'<path d="M6 3h12v18l-2-1.4-2 1.4-2-1.4-2 1.4-2-1.4-2 1.4z"/><path d="M9 8h6M9 11.5h6"/><path class="ac" d="M9 15h3.5"/>',
   tarjeta:'<rect x="2.8" y="5.5" width="18.4" height="13" rx="2.6"/><path d="M2.8 9.8h18.4"/><path class="ac" d="M6.3 14.6h3.4"/>',
@@ -955,7 +966,7 @@ function historialTerminadas(lista){
   for(const d of lista){ const f=fechaTerminada(d), k=f?f.slice(0,7):'sin'; (grupos[k] ||= []).push({d, f}); }
   const claves = Object.keys(grupos).sort((a,b)=> a==='sin'?1 : b==='sin'?-1 : b.localeCompare(a));
   return `
-    <h2>Historial: cuotas terminadas</h2>
+    <h2>Terminadas</h2>
     <div class="card hist-term">
       ${claves.map(k=>`
         <div class="label hist-mes">${k==='sin'?'Sin fecha':nombreMes(k)}</div>
@@ -1266,28 +1277,34 @@ function comparacionMes(ym){
   if(Math.abs(dif)<1) return `<div class="compara">Igual que en ${mesAnt}</div>`;
   return `<div class="compara ${mas?'sube':'baja'}"><b>${mas?'↑':'↓'} ${Math.abs(dif).toFixed(0)}%</b> ${mas?'más':'menos'} que en ${mesAnt}</div>`;
 }
-// ----- Historial mes a mes: cuánto gastaste y cuánto entró cada mes (todo pasado a pesos) -----
-function historialMeses(){
+// ----- Meses: cuánto gastaste, cuánto entró y cuánto quedó cada mes (todo pasado a pesos) -----
+function resumenMeses(){
   const porMes = {};
   for(const m of state.movimientos){
     const ym = m.fecha.slice(0,7), p = aPesos(m.monto, monedaDe(m)); if(p==null) continue;
     const x = porMes[ym] ||= {gastos:0, ingresos:0};
     if(m.tipo==='gasto') x.gastos += p; else x.ingresos += p;
   }
+  return porMes;
+}
+const conSigno = n => (n>0?'+':n<0?'−':'')+plata(Math.round(Math.abs(n)));
+// Cuotas que se terminaron de pagar en ese mes
+function terminadasDelMes(ym){ return state.deudas.filter(d=>d.cuotasPagadas>=d.cuotasTotales && (fechaTerminada(d)||'').startsWith(ym)); }
+// Tocando el nombre del mes en Gastos: la lista de todos los meses para elegir uno
+function hojaMeses(){
+  const porMes = resumenMeses(); porMes[mesActual()] ||= {gastos:0, ingresos:0};
   const meses = Object.keys(porMes).sort().reverse();
-  if(!meses.length) return '';
-  const sig = n => (n>0?'+':n<0?'−':'')+plata(Math.round(Math.abs(n)));
-  return `
-    <h2>Historial mes a mes</h2>
-    <div class="card hist">
+  abrirSheet(`
+    <h3>Meses</h3>
+    <div class="hist">
       <div class="hist-fila hist-tit"><span>Mes</span><span>Gastos</span><span>Ingresos</span><span>Quedó</span></div>
-      ${meses.map(ym=>{ const x=porMes[ym], q=x.ingresos-x.gastos;
-        return `<button class="hist-fila${ym===mesVisto?' en-uso':''}" onclick="mesVisto='${ym}';render()">
-          <span>${nombreMes(ym)}</span><span>${plata(Math.round(x.gastos))}</span><span class="pos">${x.ingresos?plata(Math.round(x.ingresos)):'—'}</span>
-          <span class="${q>=0?'pos':'neg'}">${sig(q)}</span></button>`; }).join('')}
-      <p class="s" style="margin:10px 0 0">Los dólares están pasados a pesos con el dólar de hoy.</p>
-      <p class="s" style="margin:2px 0 0">Tocá un mes para ver sus movimientos arriba.</p>
-    </div>`;
+      ${meses.map(ym=>{ const x=porMes[ym], q=x.ingresos-x.gastos, t=terminadasDelMes(ym).length;
+        return `<button class="hist-fila${ym===mesVisto?' en-uso':''}" onclick="mesVisto='${ym}';cerrarSheet();render()">
+          <span>${nombreMes(ym)}${t?` <span class="pill">${t} cuota${t===1?'':'s'} terminada${t===1?'':'s'}</span>`:''}</span>
+          <span>${plata(Math.round(x.gastos))}</span><span class="pos">${x.ingresos?plata(Math.round(x.ingresos)):'—'}</span>
+          <span class="${q>=0?'pos':'neg'}">${conSigno(q)}</span></button>`; }).join('')}
+    </div>
+    <p class="s" style="margin-top:12px">Los dólares están pasados a pesos con el dólar de hoy.</p>`);
 }
 
 function vGastos(){
@@ -1305,7 +1322,7 @@ function vGastos(){
     ${graficoMeses()}
     <div class="monthnav">
       <button onclick="mesVisto=moverMes(mesVisto,-1);render()">‹</button>
-      <b>${nombreMes(mesVisto)}</b>
+      <button class="mes-btn" onclick="hojaMeses()"><b>${nombreMes(mesVisto)}</b>${ic('flecha-abajo')}</button>
       <button onclick="mesVisto=moverMes(mesVisto,1);render()">›</button>
     </div>
     <div class="card total-mes">
@@ -1313,6 +1330,16 @@ function vGastos(){
       <div class="big">${plata(gARS)}</div>
       ${gUSD?`<div class="s">+ ${plata(gUSD,'USD')}</div>`:''}
       ${comparacionMes(mesVisto)}
+      ${(()=>{ const x=resumenMeses()[mesVisto]; if(!x || !x.ingresos) return '';
+        const q=x.ingresos-x.gastos;
+        return `<div class="mes-res">
+          <div class="mes-res-fila"><span>Entró</span><b class="pos">${plata(Math.round(x.ingresos))}</b></div>
+          <div class="mes-res-fila"><span>Gastaste (dólares en pesos)</span><b>${plata(Math.round(x.gastos))}</b></div>
+          <div class="mes-res-fila mes-res-total"><span>Te quedó</span><b class="${q>=0?'pos':'neg'}">${conSigno(q)}</b></div>
+        </div>`; })()}
+      ${(()=>{ const t=terminadasDelMes(mesVisto); if(!t.length) return '';
+        return `<div class="label" style="margin-top:16px">Terminaste de pagar</div>
+          ${t.map(d=>`<div class="mes-res-fila"><span>${esc(d.descripcion)} <small>${d.cuotasTotales} cuota${d.cuotasTotales===1?'':'s'}</small></span><b>${plata(d.cuotasTotales*d.montoCuota,d.moneda)}</b></div>`).join('')}`; })()}
     </div>
     ${Object.keys(porDia).length ? Object.entries(porDia).map(([dia,movs])=>`
       <div class="label" style="margin:14px 4px 6px">${new Date(dia+'T12:00').toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'short'})}</div>
@@ -1324,7 +1351,7 @@ function vGastos(){
             <div class="amt ${m.tipo==='ingreso'?'pos':''}">${m.tipo==='ingreso'?'+':'-'}${plata(m.monto,monedaDe(m))}</div></div>`;
         }).join('')}
       </div>`).join('') : `<div class="card empty">No hay movimientos este mes</div>`}
-    ${historialMeses()}`;
+`;
 }
 
 // ----- Cuotas / Deudas -----
