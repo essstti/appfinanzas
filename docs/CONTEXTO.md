@@ -41,7 +41,7 @@ Al publicar un cambio hay que subir el número en **tres lugares**:
 
 Si cambia `sw.js`, la app del celu detecta la versión nueva y se recarga sola. Si no cambia, el contenido nuevo igual se ve al cerrar y volver a abrir la app.
 
-Historial de versiones: …13 (ticket original) → 14 (Ticket renovado) → 14.1 (Atrasada, TNA automática, dólar en vivo, tabla de dólares) → 14.1.01 (La pagó otra persona, más tasas, efecto del dólar, arreglo de líneas rosas) → **15.0** (meses, dividir gastos, animaciones, tarjetas guardadas).
+Historial de versiones: …13 (ticket original) → 14 (Ticket renovado) → 14.1 (Atrasada, TNA automática, dólar en vivo, tabla de dólares) → 14.1.01 (La pagó otra persona, más tasas, efecto del dólar, arreglo de líneas rosas) → **15.0** (meses, dividir gastos, animaciones, color y red de tarjeta automáticos).
 
 ## 3. Datos
 
@@ -59,7 +59,7 @@ Historial de versiones: …13 (ticket original) → 14 (Ticket renovado) → 14.
   - `dolarAyer` {buscado, valores: {casa: {fecha, venta}}}: cierre del día anterior
   - `usdt` {exchange, valor, actualizado, manual}
   - `tasas` {valores: {'marca|MONEDA': TNA}, actualizado}
-  - `tarjetas` [{marca, red, quien, dia}]: tarjetas recordadas
+  - `tarjetas` [{marca, red, quien, dia}]: última red usada con cada banco
   - `ultimoPagador`, `ultimosAmigos`: últimos nombres usados
   - `tema`: auto|claro|oscuro
 - Para registros viejos sin fecha de creación, la fecha se saca del `id`, que la tiene adentro.
@@ -143,9 +143,10 @@ Los dólares se pasan a pesos con el dólar de hoy.
   - La fecha de terminada se guarda al pagar la última cuota o al completarla a mano; las viejas toman la fecha del último pago.
 - **Formulario de cuota/deuda:**
   - Tipo: Tarjeta, Persona (Yo le debo / Me debe) o Mensual.
-  - **«Tus tarjetas»:** las tarjetas ya usadas. Tocando una se completan solos el banco, la red (Visa, Mastercard, Amex, Cabal, Naranja), el color y el día de vencimiento.
-  - Si se elige el banco a mano, trae la red y el día de la última tarjeta de ese banco.
-  - El color sale del banco o billetera elegido.
+  - Vista previa de la tarjeta arriba, con su color y su red.
+  - **Al elegir el banco o la billetera** (o escribir su nombre), se ponen solos el **color** y la **red**, y solo aparecen las redes que ese banco emite (tabla `TARJETAS_MARCA`). Ejemplos: Ualá → Mastercard; Brubank, Lemon y Personal Pay → Visa; Belo y Prex → Mastercard; Naranja X → Naranja, Visa o Mastercard; Galicia y Santander → Visa, Mastercard o Amex; Provincia, Ciudad y Credicoop → también Cabal; Bancor → Mastercard o Visa; Mercado Pago → Mastercard. Al abrir la app, las tarjetas cargadas con una red que su banco no emite se corrigen solas (`corregirRedes`). Los bancos que no están en la tabla muestran todas las redes.
+  - La red elegida es la primera de la lista o, si ya cargaste una tarjeta de ese banco, la misma que usaste (`state.tarjetas`).
+  - Sin banco, la tarjeta toma el color de la red (Visa azul, Mastercard gris oscuro, Amex celeste, Cabal azul, Naranja naranja).
 
 ### Inversión
 Lo que pusiste y lo que vale hoy, ganancia en $ y %, reparto por tipo (Plazo fijo, FCI, Dólares, Cripto, Acciones/CEDEARs, Bonos, Otro) con colores. Tocando una inversión se actualiza su valor.
@@ -209,7 +210,7 @@ Lo que pusiste y lo que vale hoy, ganancia en $ y %, reparto por tipo (Plazo fij
   - `actualizarDolar`, `actualizarDolarAyer`, `actualizarUSDT`, `actualizarTasas`
   - `dolaresPorLugar`, `cambioDolarTxt`
   - `resumenMeses`, `resumenUltimosMeses`, `terminadasDelMes`, `fechaTerminada`
-  - `tarjetasGuardadas`, `nombresAmigos`, `selloPagado`
+  - `tarjetasGuardadas`, `redesDe`, `nombresAmigos`, `selloPagado`
 - Para probar sin tocar datos reales: copia de `index.html` con datos de ejemplo, sin service worker, publicada como página privada.
 
 ## 8. Ideas pendientes (no hechas)

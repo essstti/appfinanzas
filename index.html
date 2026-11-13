@@ -325,9 +325,12 @@ body.golpe #main{animation:golpe .32s .3s}
 /* Aviso de terminadas en Cuotas */
 .aviso-term{display:block;width:100%;text-align:left;margin:22px 0 8px;padding:12px 14px;border:1.5px dashed var(--punteo);border-radius:var(--r);font-size:13px}
 .aviso-term span{display:block;color:var(--muted);font-size:12px;margin-top:2px}
-/* Tus tarjetas en el formulario de cuotas */
-.tarj-op{width:116px}
-.tarj-op .mini-card{margin-bottom:2px}
+/* Vista previa de la tarjeta en el formulario de cuotas */
+.previa-tarjeta{display:flex;justify-content:center;margin:16px 0 4px}
+.previa-tarjeta .mini-card{width:112px;height:72px;border-radius:9px}
+.previa-tarjeta .mc-banco{font-size:15px;left:9px;top:6px}
+.previa-tarjeta .mc-chip{left:11px;top:32px;width:18px;height:14px}
+.previa-tarjeta .mc-red{font-size:13px;right:9px;bottom:6px}
 /* Tabla de los cuatro dólares */
 .dol-fila{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:8px;align-items:center;width:100%;text-align:right;padding:11px 0;border-bottom:1.5px dashed var(--punteo);font-size:14px}
 .dol-fila>span:first-child{text-align:left;font-weight:700;display:flex;align-items:center;gap:8px}
@@ -852,6 +855,29 @@ const SERVICIOS = [
   {id:'crunchy',   nombre:'Crunchyroll', ini:'CR',  bg:'#f47521', fg:'#fff', buscar:['crunchyroll']},
 ];
 const REDES_TARJETA = ['Visa','Mastercard','Amex','Cabal','Naranja'];
+// Qué redes emite cada banco o billetera (la primera es la que se elige sola). Si no está en la lista, se muestran todas.
+const TARJETAS_MARCA = {
+  mp:['Mastercard'], uala:['Mastercard'], naranjax:['Naranja','Visa','Mastercard'], brubank:['Visa'], lemon:['Visa'],
+  belo:['Mastercard'], personal:['Visa'], prex:['Mastercard'],
+  nacion:['Visa','Mastercard'], galicia:['Visa','Mastercard','Amex'], santander:['Visa','Mastercard','Amex'], bbva:['Visa','Mastercard'],
+  macro:['Visa','Mastercard'], provincia:['Visa','Mastercard','Cabal'], cuentadni:['Visa','Mastercard','Cabal'], icbc:['Visa','Mastercard'],
+  hsbc:['Visa','Mastercard'], supervielle:['Visa','Mastercard'], patagonia:['Visa','Mastercard'], ciudad:['Visa','Mastercard','Cabal'],
+  credicoop:['Cabal','Visa','Mastercard'], cordoba:['Mastercard','Visa'],
+};
+function redesDe(marca){ return TARJETAS_MARCA[marca] || REDES_TARJETA; }
+// Corrige tarjetas cargadas con una red que ese banco no emite (por ejemplo, Mercado Pago como Visa → Mastercard)
+function corregirRedes(){
+  let cambio = false;
+  for(const d of state.deudas){
+    if(d.clase!=='tarjeta' || !d.red) continue;
+    const m = marcaDe(d.marca, d.quien), posibles = m && TARJETAS_MARCA[m.id];
+    if(posibles && !posibles.includes(d.red)){ d.red = posibles[0]; cambio = true; }
+  }
+  if(state.tarjetas) state.tarjetas = state.tarjetas.filter(t=>redesDe(t.marca).includes(t.red));
+  if(cambio) save();
+}
+// Color de la tarjeta cuando no se eligió banco: el de la red
+const COLOR_RED = {Visa:'#1a1f71', Mastercard:'#2b2b2b', Amex:'#2e77bb', Cabal:'#0b4ea2', Naranja:'#fe5000'};
 
 // Busca la marca: primero la elegida a mano, si no, por el nombre
 function marcaDe(id, texto){
@@ -873,7 +899,7 @@ function badge(m, extra=''){
 // Mini tarjeta de crédito con el color del banco
 function miniTarjeta(d){
   const m = marcaDe(d.marca, d.quien);
-  const bg = m ? m.bg : '#3a4150';
+  const bg = m ? m.bg : (COLOR_RED[d.red] || '#3a4150');
   const fg = m ? m.fg : '#fff';
   return `<div class="mini-card" style="background:linear-gradient(135deg, ${bg}, ${oscurecer(bg)});color:${fg}">
     <span class="mc-banco">${m?m.ini:''}</span><span class="mc-chip"></span><span class="mc-red">${esc(({Mastercard:'Master'})[d.red]||d.red||'')}</span></div>`;
@@ -1921,14 +1947,14 @@ function formDeuda(id){
     <div id="dDirWrap" style="margin-top:10px"><div class="seg" id="dDir"><button data-v="debo">Yo le debo</button><button data-v="medeben">Me debe</button></div></div>
     <label>¿Qué es?</label>
     <input id="dDesc" placeholder="Ej: Zapatillas, Celular, Préstamo" value="${esc(d?d.descripcion:'')}">
-    <div id="dTarjetasWrap"></div>
     <label id="dQuienLbl">Tarjeta</label>
     <input id="dQuien" placeholder="Ej: Galicia" value="${esc(d?d.quien:'')}">
     <div id="dTarjetaWrap">
+      <div class="previa-tarjeta" id="dPrevia"></div>
+      <label>Banco o billetera (pone solo el color y la red)</label>
+      ${selectorMarcas('dMarca', d?d.marca:'')}
       <label>Red de la tarjeta</label>
       <div class="chips" id="dRed">${REDES_TARJETA.map(r=>`<button type="button" class="chip" data-v="${r}">${r}</button>`).join('')}</div>
-      <label>Banco / billetera (para el color)</label>
-      ${selectorMarcas('dMarca', d?d.marca:'')}
     </div>
     <label>Moneda</label>
     <div class="seg" id="dMon"><button data-v="ARS">Pesos</button><button data-v="USD">Dólares</button></div>
@@ -1942,7 +1968,7 @@ function formDeuda(id){
       <button class="btn" onclick="guardarDeuda('${id||''}')">Guardar</button>
       ${d?`<button class="btn danger" onclick="borrar('deudas','${id}')">Eliminar</button>`:''}
     </div>`);
-  const pint=()=>{
+  let pint=()=>{
     document.querySelectorAll('#dClase button').forEach(x=>x.classList.toggle('on',x.dataset.v===clase));
     document.querySelectorAll('#dDir button').forEach(x=>x.classList.toggle('on',x.dataset.v===dir));
     document.querySelectorAll('#dMon button').forEach(x=>x.classList.toggle('on',x.dataset.v===mon));
@@ -1960,32 +1986,33 @@ function formDeuda(id){
   document.querySelectorAll('#dMon button').forEach(x=>x.onclick=()=>{mon=x.dataset.v;pint();});
   pint();
   formDeuda._get = ()=>({clase,dir,mon,red,marca});
-  // Tus tarjetas: tocás una y se completan solos el banco, la red (Visa, Master...), el color y el día de vencimiento
-  const ponerTarjeta = t => {
-    $('#dQuien').value = t.quien||''; red = t.red||''; marca = t.marca||'';
-    if(t.dia && !$('#dDia').value) $('#dDia').value = t.dia;
-    document.querySelectorAll('#dMarca .marca-op').forEach(x=>x.classList.toggle('on', x.dataset.id===marca));
-    pint(); pintarTarjetas();
-  };
-  const pintarTarjetas = () => {
-    const ts = tarjetasGuardadas();
-    $('#dTarjetasWrap').innerHTML = clase!=='tarjeta' || !ts.length ? '' : `
-      <label>Tus tarjetas</label>
-      <div class="billes" id="dTarjetas">${ts.map((t,i)=>`<button type="button" class="bille-op tarj-op ${t.marca===marca && t.red===red && (t.quien||'')===$('#dQuien').value.trim()?'on':''}" data-i="${i}">
-        ${miniTarjeta(t)}<span>${esc(t.quien||marcaDe(t.marca)?.nombre||'Tarjeta')}</span><small>${esc(t.red||'')}</small></button>`).join('')}</div>`;
-    document.querySelectorAll('#dTarjetas .tarj-op').forEach(x=>x.onclick=()=>ponerTarjeta(ts[x.dataset.i]));
-  };
-  // Si elegís el banco a mano, trae la red y el día de la última tarjeta de ese banco
-  activarSelectorMarcas('dMarca', idM=>{
+  // Al elegir el banco o la billetera: se pone solo su color y su red (Visa, Master...).
+  // Solo se muestran las redes que ese banco emite; si usaste otra vez una tarjeta de ese banco, trae la misma red.
+  const elegirMarca = idM => {
     marca = idM;
+    const posibles = redesDe(idM);
+    const ultima = tarjetasGuardadas().find(x=>x.marca===idM && posibles.includes(x.red));
+    red = ultima ? ultima.red : posibles[0];
+    document.querySelectorAll('#dMarca .marca-op').forEach(x=>x.classList.toggle('on', x.dataset.id===idM));
+    pint();
+  };
+  activarSelectorMarcas('dMarca', idM=>{
     const m = MARCAS.find(x=>x.id===idM);
     if(m && !$('#dQuien').value.trim()) $('#dQuien').value = m.nombre;
-    const t = tarjetasGuardadas().find(x=>x.marca===idM);
-    if(t && !red){ red = t.red||''; if(t.dia && !$('#dDia').value) $('#dDia').value = t.dia; }
-    pint(); pintarTarjetas();
+    elegirMarca(idM);
   });
-  document.querySelectorAll('#dClase button').forEach(x=>x.addEventListener('click', pintarTarjetas));
-  pintarTarjetas();
+  // Si escribís el banco ("Galicia", "Mercado Pago"...), se elige solo
+  $('#dQuien').addEventListener('change', ()=>{ if(clase!=='tarjeta' || marca) return; const m = marcaDe('', $('#dQuien').value); if(m && TARJETAS_MARCA[m.id]) elegirMarca(m.id); });
+  $('#dQuien').addEventListener('input', ()=>pint());
+  // Redes posibles y vista previa de la tarjeta con su color
+  const pintAntes = pint;
+  pint = () => {
+    pintAntes();
+    const posibles = redesDe(marca);
+    document.querySelectorAll('#dRed .chip').forEach(x=>x.hidden = !posibles.includes(x.dataset.v));
+    $('#dPrevia').innerHTML = clase==='tarjeta' ? miniTarjeta({marca, red, quien:$('#dQuien').value}) : '';
+  };
+  pint();
 }
 // Las tarjetas que ya usaste (sin repetir): banco, red, color y día de vencimiento
 function tarjetasGuardadas(){
@@ -2195,6 +2222,7 @@ function mostrarIntro(){
 // ============================================================
 //  ARRANQUE
 // ============================================================
+corregirRedes();
 aplicarTema();
 render();
 mostrarIntro();
