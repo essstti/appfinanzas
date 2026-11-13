@@ -1335,7 +1335,7 @@ function vGastos(){
         ${movs.map(m=>{ const c=categoria(m.categoria), b=billetera(m.billeteraId);
           return `<div class="item" onclick="formMovimiento('${m.id}')">
             ${icoCat(m.categoria)}
-            <div class="grow"><div class="t">${esc(m.nota||c.nombre)}</div><div class="s">${c.nombre} · ${esc(b?b.nombre:'—')}</div></div>
+            <div class="grow"><div class="t">${esc(m.nota||c.nombre)}</div><div class="s">${c.nombre} · ${esc(b?b.nombre:'—')}${m.dividido?` · entre ${m.dividido}`:''}</div></div>
             <div class="amt ${m.tipo==='ingreso'?'pos':''}">${m.tipo==='ingreso'?'+':'-'}${plata(m.monto,monedaDe(m))}</div></div>`;
         }).join('')}
       </div>`).join('') : `<div class="card empty">No hay movimientos este mes</div>`}
@@ -1724,6 +1724,7 @@ function formMovimiento(id){
     $('#mCats').innerHTML = cats.map(c=>`<button class="chip ${c.id===catMov?'on':''}" onclick="catMov='${c.id}';this.parentNode.querySelectorAll('.chip').forEach(x=>x.classList.remove('on'));this.classList.add('on')"><span style="color:${colorCat(c.id)}">${ici(c.ic)}</span>${c.nombre}</button>`).join('');
     document.querySelectorAll('#mTipo button').forEach(b=>b.classList.toggle('on', b.dataset.t===tipoMov));
     $('#mBilleLbl').textContent = tipoMov==='gasto' ? '¿De qué billetera sale?' : '¿A qué billetera entra?';
+    $('#mDividirCaja').hidden = !!m || tipoMov!=='gasto'; // dividir: solo en gastos nuevos
   };
   abrirSheet(`
     <h3>${m?'Editar':'Nuevo'} movimiento</h3>
@@ -1740,21 +1741,65 @@ function formMovimiento(id){
     <input id="mNota" placeholder="Ej: hamburguesa con los pibes" value="${esc(m?m.nota:'')}">
     <label>Fecha</label>
     <input id="mFecha" type="date" value="${m?m.fecha:hoyISO()}">
+    <div id="mDividirCaja">
+      <button type="button" class="btn sec sm otra-op" id="mDividir">${ici('personas')} Lo dividí con amigos</button>
+      <div id="mDivCaja" hidden>
+        <label>¿Con quiénes? (separados por coma)</label>
+        <input id="mAmigos" placeholder="Ej: Nico, Juli, Fran" value="${esc(state.ultimosAmigos||'')}">
+        <p class="conv" id="mDivTxt"></p>
+      </div>
+    </div>
     <div class="actions">
       <button class="btn" onclick="guardarMovimiento('${id||''}')">Guardar</button>
       ${m?`<button class="btn danger" onclick="borrar('movimientos','${id}')">Eliminar</button>`:''}
     </div>`);
   document.querySelectorAll('#mTipo button').forEach(b=>b.onclick=()=>{ tipoMov=b.dataset.t; catMov = tipoMov==='gasto'?'comida':'laburo'; pintar(); });
   pintar();
+  // Dividir con amigos: pagaste vos todo y cada uno te debe su parte
+  dividirMov = false;
+  const textoDiv = () => {
+    const amigos = nombresAmigos(), monto = num($('#mMonto').value), mon = billetera($('#mBille').dataset.v)?.moneda || 'ARS';
+    if(!amigos.length){ $('#mDivTxt').innerHTML = 'Escribí los nombres y te calculo cuánto pone cada uno.'; return; }
+    const parte = Math.round(monto/(amigos.length+1)*100)/100;
+    $('#mDivTxt').innerHTML = `Son ${amigos.length+1} contándote: cada uno pone <b style="color:var(--txt)">${plata(parte,mon)}</b>.<br>
+      De la billetera sale todo, y en «Me deben» se anota que ${listaNombres(amigos.map(esc))} te ${amigos.length===1?'debe':'deben'} ${plata(parte,mon)}${amigos.length===1?'':' cada uno'}.`;
+  };
+  $('#mDividir').onclick = () => {
+    dividirMov = !dividirMov;
+    $('#mDivCaja').hidden = !dividirMov;
+    $('#mDividir').innerHTML = dividirMov ? `${ici('personas')} No lo dividí` : `${ici('personas')} Lo dividí con amigos`;
+    if(dividirMov && !$('#mAmigos').value) $('#mAmigos').focus();
+    textoDiv();
+  };
+  $('#mAmigos').addEventListener('input', textoDiv);
+  $('#mMonto').addEventListener('input', ()=>{ if(dividirMov) textoDiv(); });
+  $('#mBille').addEventListener('cambio', ()=>{ if(dividirMov) textoDiv(); });
   if(!m) setTimeout(()=>$('#mMonto').focus(),250);
 }
+let dividirMov = false;
+// ["Nico","Juli","Fran"] -> "Nico, Juli y Fran"
+function listaNombres(l){ return l.length<2 ? l.join('') : l.slice(0,-1).join(', ')+' y '+l[l.length-1]; }
+// "Nico, Juli y Fran" -> ["Nico","Juli","Fran"]
+function nombresAmigos(){ return ($('#mAmigos')?.value||'').split(/,|\s+y\s+/).map(x=>x.trim()).filter(Boolean); }
 function guardarMovimiento(id){
   const monto = num($('#mMonto').value);
   if(monto<=0) return toast('Poné un monto');
   const datos = {tipo:tipoMov, monto, billeteraId:$('#mBille').dataset.v, categoria:catMov, nota:$('#mNota').value.trim(), fecha:$('#mFecha').value||hoyISO()};
+  const amigos = (!id && tipoMov==='gasto' && dividirMov) ? nombresAmigos() : [];
+  if(dividirMov && !id && tipoMov==='gasto' && !amigos.length) return toast('Escribí con quiénes lo dividiste');
+  if(amigos.length) datos.dividido = amigos.length+1;
   if(id){ Object.assign(state.movimientos.find(x=>x.id===id), datos); }
   else state.movimientos.push({id:uid(), ...datos});
-  save(); cerrarSheet(); render(); toast(tipoMov==='gasto'?'Gasto guardado':'Ingreso guardado');
+  // Cada amigo te debe su parte: queda en "Me deben"
+  if(amigos.length){
+    const parte = Math.round(monto/(amigos.length+1)*100)/100, mon = billetera(datos.billeteraId)?.moneda || 'ARS';
+    const que = datos.nota || categoria(catMov).nombre;
+    for(const quien of amigos) state.deudas.push({id:uid(), creada:Date.now(), clase:'persona', direccion:'medeben', descripcion:que, quien,
+      moneda:mon, montoCuota:parte, cuotasTotales:1, cuotasPagadas:0, diaVencimiento:0, red:'', marca:''});
+    state.ultimosAmigos = amigos.join(', ');
+  }
+  save(); cerrarSheet(); render();
+  toast(amigos.length ? `Gasto guardado · ${amigos.length===1?amigos[0]+' te debe':amigos.length+' te deben'} su parte` : tipoMov==='gasto'?'Gasto guardado':'Ingreso guardado');
 }
 
 // ----- Billetera -----
