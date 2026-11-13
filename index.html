@@ -857,7 +857,7 @@ const SERVICIOS = [
 const REDES_TARJETA = ['Visa','Mastercard','Amex','Cabal','Naranja'];
 // Qué redes emite cada banco o billetera (la primera es la que se elige sola). Si no está en la lista, se muestran todas.
 const TARJETAS_MARCA = {
-  mp:['Mastercard','Visa'], uala:['Mastercard'], naranjax:['Naranja','Visa','Mastercard'], brubank:['Visa'], lemon:['Visa'],
+  mp:['Mastercard'], uala:['Mastercard'], naranjax:['Naranja','Visa','Mastercard'], brubank:['Visa'], lemon:['Visa'],
   belo:['Mastercard'], personal:['Visa'], prex:['Mastercard'],
   nacion:['Visa','Mastercard'], galicia:['Visa','Mastercard','Amex'], santander:['Visa','Mastercard','Amex'], bbva:['Visa','Mastercard'],
   macro:['Visa','Mastercard'], provincia:['Visa','Mastercard','Cabal'], cuentadni:['Visa','Mastercard','Cabal'], icbc:['Visa','Mastercard'],
@@ -865,6 +865,17 @@ const TARJETAS_MARCA = {
   credicoop:['Cabal','Visa','Mastercard'], cordoba:['Mastercard','Visa'],
 };
 function redesDe(marca){ return TARJETAS_MARCA[marca] || REDES_TARJETA; }
+// Corrige tarjetas cargadas con una red que ese banco no emite (por ejemplo, Mercado Pago como Visa → Mastercard)
+function corregirRedes(){
+  let cambio = false;
+  for(const d of state.deudas){
+    if(d.clase!=='tarjeta' || !d.red) continue;
+    const m = marcaDe(d.marca, d.quien), posibles = m && TARJETAS_MARCA[m.id];
+    if(posibles && !posibles.includes(d.red)){ d.red = posibles[0]; cambio = true; }
+  }
+  if(state.tarjetas) state.tarjetas = state.tarjetas.filter(t=>redesDe(t.marca).includes(t.red));
+  if(cambio) save();
+}
 // Color de la tarjeta cuando no se eligió banco: el de la red
 const COLOR_RED = {Visa:'#1a1f71', Mastercard:'#2b2b2b', Amex:'#2e77bb', Cabal:'#0b4ea2', Naranja:'#fe5000'};
 
@@ -2211,6 +2222,7 @@ function mostrarIntro(){
 // ============================================================
 //  ARRANQUE
 // ============================================================
+corregirRedes();
 aplicarTema();
 render();
 mostrarIntro();

@@ -144,7 +144,7 @@ Los dólares se pasan a pesos con el dólar de hoy.
 - **Formulario de cuota/deuda:**
   - Tipo: Tarjeta, Persona (Yo le debo / Me debe) o Mensual.
   - Vista previa de la tarjeta arriba, con su color y su red.
-  - **Al elegir el banco o la billetera** (o escribir su nombre), se ponen solos el **color** y la **red**, y solo aparecen las redes que ese banco emite (tabla `TARJETAS_MARCA`). Ejemplos: Ualá → Mastercard; Brubank, Lemon y Personal Pay → Visa; Belo y Prex → Mastercard; Naranja X → Naranja, Visa o Mastercard; Galicia y Santander → Visa, Mastercard o Amex; Provincia, Ciudad y Credicoop → también Cabal; Bancor → Mastercard o Visa; Mercado Pago → Mastercard o Visa. Los bancos que no están en la tabla muestran todas las redes.
+  - **Al elegir el banco o la billetera** (o escribir su nombre), se ponen solos el **color** y la **red**, y solo aparecen las redes que ese banco emite (tabla `TARJETAS_MARCA`). Ejemplos: Ualá → Mastercard; Brubank, Lemon y Personal Pay → Visa; Belo y Prex → Mastercard; Naranja X → Naranja, Visa o Mastercard; Galicia y Santander → Visa, Mastercard o Amex; Provincia, Ciudad y Credicoop → también Cabal; Bancor → Mastercard o Visa; Mercado Pago → Mastercard. Al abrir la app, las tarjetas cargadas con una red que su banco no emite se corrigen solas (`corregirRedes`). Los bancos que no están en la tabla muestran todas las redes.
   - La red elegida es la primera de la lista o, si ya cargaste una tarjeta de ese banco, la misma que usaste (`state.tarjetas`).
   - Sin banco, la tarjeta toma el color de la red (Visa azul, Mastercard gris oscuro, Amex celeste, Cabal azul, Naranja naranja).
 
