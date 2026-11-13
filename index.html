@@ -9,10 +9,10 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Cuentas Claras">
-<link rel="manifest" href="manifest.webmanifest?v=14.1.01">
-<link rel="apple-touch-icon" href="icons/icon-180.png?v=14.1.01">
-<link rel="icon" href="icons/favicon.svg?v=14.1.01" type="image/svg+xml">
-<link rel="alternate icon" href="icons/icon-192.png?v=14.1.01">
+<link rel="manifest" href="manifest.webmanifest?v=15.0">
+<link rel="apple-touch-icon" href="icons/icon-180.png?v=15.0">
+<link rel="icon" href="icons/favicon.svg?v=15.0" type="image/svg+xml">
+<link rel="alternate icon" href="icons/icon-192.png?v=15.0">
 <style>
   /* ============================================================
      DISEÑO "TICKET DEL SÚPER"
@@ -289,18 +289,6 @@ nav button.on::after{content:'';position:absolute;left:30%;right:30%;bottom:-2px
   animation:sellar .45s .25s cubic-bezier(.3,1.6,.5,1) both, respirar 3.2s 1s ease-in-out infinite}
 .linea .atrasada .ico,.linea .atrasada .mini-card{outline:2px solid var(--red);outline-offset:3px}
 .cuota.atrasada{box-shadow:0 0 0 1.5px var(--red)}
-/* 1) Mini ticket impreso */
-.impreso{position:fixed;left:50%;top:env(safe-area-inset-top);width:min(280px,80vw);z-index:31;pointer-events:none;transform:translate(-50%,-110%)}
-.impreso.sale{animation:imprime 1s steps(9,end) forwards}
-.impreso.va{animation:se-va .45s cubic-bezier(.5,0,.8,.3) forwards}
-@keyframes imprime{from{transform:translate(-50%,-110%)}to{transform:translate(-50%,0)}}
-@keyframes se-va{from{transform:translate(-50%,0)}to{transform:translate(-50%,-115%)}}
-.imp-papel{background:var(--card);color:var(--txt);padding:12px 14px 20px;font-size:12px;box-shadow:0 8px 24px rgba(0,0,0,.22);border-top:5px solid var(--barra-sup);
-  -webkit-mask:radial-gradient(circle 5px at 50% 100%,#0000 97%,#000) 50% 0/12px 100% repeat-x;mask:radial-gradient(circle 5px at 50% 100%,#0000 97%,#000) 50% 0/12px 100% repeat-x}
-.imp-fila{display:flex;justify-content:space-between;gap:8px;padding:2px 0}
-.imp-det{color:var(--muted);border-bottom:1.5px dashed var(--punteo);padding-bottom:6px;margin-bottom:4px}
-.imp-total{font-weight:700;font-size:14px}
-.imp-gracias{text-align:center;font-size:9.5px;letter-spacing:1px;color:var(--muted);margin-top:8px}
 /* 2) Sello grande que cae */
 .sello-grande{position:fixed;inset:0;z-index:32;display:grid;place-items:center;pointer-events:none;opacity:0}
 .sello-grande span{display:flex;align-items:center;gap:6px;font-family:'Space Grotesk',system-ui,sans-serif;font-weight:700;font-size:44px;letter-spacing:4px;text-transform:uppercase;
@@ -310,12 +298,10 @@ nav button.on::after{content:'';position:absolute;left:30%;right:30%;bottom:-2px
 @keyframes sello-cae{0%{opacity:0;transform:scale(3) rotate(-25deg)}22%{opacity:1;transform:scale(.92) rotate(-11deg)}32%{transform:scale(1.04) rotate(-12deg)}40%{transform:scale(1) rotate(-12deg)}80%{opacity:1;transform:scale(1) rotate(-12deg)}100%{opacity:0;transform:scale(1.06) rotate(-12deg)}}
 body.golpe #main{animation:golpe .32s .3s}
 @keyframes golpe{25%{transform:translate(-3px,2px)}50%{transform:translate(3px,-1px)}75%{transform:translate(-1px,1px)}}
-/* 3) Total que se tipea */
-.cursor{animation:titila .8s steps(2,end) infinite;font-weight:400;margin-left:2px}
 /* 4) Cambio de pestaña: el papel sale de abajo */
 #main.entra{animation:papel .38s cubic-bezier(.2,.8,.2,1)}
 @keyframes papel{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
-@media (prefers-reduced-motion:reduce){.impreso.sale,.impreso.va,#main.entra,body.golpe #main{animation-duration:.01s}}
+@media (prefers-reduced-motion:reduce){#main.entra,body.golpe #main{animation-duration:.01s}}
 /* Botón "La pagó otra persona" en la hoja de pago */
 .otra-op{margin-top:14px;display:flex;align-items:center;gap:4px}
 /* Resumen corto de meses en Gastos */
@@ -339,6 +325,9 @@ body.golpe #main{animation:golpe .32s .3s}
 /* Aviso de terminadas en Cuotas */
 .aviso-term{display:block;width:100%;text-align:left;margin:22px 0 8px;padding:12px 14px;border:1.5px dashed var(--punteo);border-radius:var(--r);font-size:13px}
 .aviso-term span{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+/* Tus tarjetas en el formulario de cuotas */
+.tarj-op{width:116px}
+.tarj-op .mini-card{margin-bottom:2px}
 /* Tabla de los cuatro dólares */
 .dol-fila{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:8px;align-items:center;width:100%;text-align:right;padding:11px 0;border-bottom:1.5px dashed var(--punteo);font-size:14px}
 .dol-fila>span:first-child{text-align:left;font-weight:700;display:flex;align-items:center;gap:8px}
@@ -365,7 +354,6 @@ body.golpe #main{animation:golpe .32s .3s}
 <nav id="nav"></nav>
 <div class="overlay" id="overlay"><div class="sheet" id="sheet"></div></div>
 <div class="toast" id="toast"></div>
-<div class="impreso" id="impreso" aria-live="polite"></div>
 <div class="sello-grande" id="selloGrande" aria-hidden="true"></div>
 <div class="intro" id="intro" aria-hidden="true"></div>
 
@@ -376,7 +364,7 @@ body.golpe #main{animation:golpe .32s .3s}
    ============================================================ */
 
 const STORAGE_KEY = 'finanzas-v1';
-const VERSION_APP = '14.1.01'; // subilo junto con el de sw.js, así sabés en Ajustes qué versión tenés
+const VERSION_APP = '15.0'; // subilo junto con el de sw.js, así sabés en Ajustes qué versión tenés
 
 // Logo "Cuentas claras": usa los colores del modo actual (azul de día, cereza de noche)
 function logoSello(u='l', A='var(--txt)', B='var(--accent)', P='var(--bg)'){
@@ -486,18 +474,7 @@ function esc(s){ return String(s??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'
 //  ANIMACIONES CHICAS (con onda de ticket)
 // ============================================================
 const sinMovimiento = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
-// 1) Al guardar un gasto o ingreso: sale un mini ticket impreso desde arriba y se va solo
-function imprimirTicket({tipo, monto, moneda, cat, nota}){
-  const el = $('#impreso'), d = new Date(), p = n=>String(n).padStart(2,'0');
-  el.innerHTML = `<div class="imp-papel">
-    <div class="imp-fila"><span>${tipo==='gasto'?'GASTO':'INGRESO'}</span><span>${p(d.getDate())}/${p(d.getMonth()+1)} ${p(d.getHours())}:${p(d.getMinutes())}</span></div>
-    <div class="imp-fila imp-det"><span>${esc(nota||cat)}</span></div>
-    <div class="imp-fila imp-total"><span>TOTAL</span><span>${tipo==='gasto'?'-':'+'}${plata(monto,moneda)}</span></div>
-    <div class="imp-gracias">¡GRACIAS POR SU COMPRA!</div></div>`;
-  el.classList.remove('sale','va'); void el.offsetWidth; el.classList.add('sale');
-  clearTimeout(el._h); el._h = setTimeout(()=>el.classList.add('va'), sinMovimiento()?1600:2300);
-}
-// 2) Al pagar: cae un sello grande "PAGADO" en el medio y rebota
+// Al pagar: cae un sello grande "PAGADO" en el medio y rebota
 function selloPagado(texto='Pagado'){
   if(sinMovimiento()) return;
   const el = $('#selloGrande');
@@ -505,17 +482,6 @@ function selloPagado(texto='Pagado'){
   el.classList.remove('cae'); void el.offsetWidth; el.classList.add('cae');
   document.body.classList.remove('golpe'); void document.body.offsetWidth; document.body.classList.add('golpe');
   clearTimeout(el._h); el._h = setTimeout(()=>{ el.classList.remove('cae'); document.body.classList.remove('golpe'); }, 1500);
-}
-// 3) El total de Inicio se escribe de a un número, como la caja del súper (solo al entrar a Inicio)
-let tipearTotal = true;
-function tipearNumero(){
-  const el = document.querySelector('.hero .big'); if(!el || sinMovimiento()) return;
-  const txt = el.textContent; let i = 0;
-  el.setAttribute('aria-label', txt);
-  el.innerHTML = '<span class="tipeo"></span><span class="cursor">▌</span>';
-  const t = el.querySelector('.tipeo');
-  const paso = () => { t.textContent = txt.slice(0, ++i); if(i < txt.length) setTimeout(paso, 55); else setTimeout(()=>el.querySelector('.cursor')?.remove(), 600); };
-  setTimeout(paso, 150);
 }
 
 function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),1800); }
@@ -1080,7 +1046,6 @@ function render(){
   const vistas = {inicio:vInicio, gastos:vGastos, cuotas:vCuotas, inversiones:vInversiones, ajustes:vAjustes};
   $('#main').innerHTML = vistas[vista]();
   marcarProximos();
-  if(vista==='inicio' && tipearTotal){ tipearTotal = false; tipearNumero(); }
   window.scrollTo(0,0);
   pedirEfecto();
 }
@@ -1099,7 +1064,6 @@ function renderNav(){
 function irA(v){
   const cambio = v!==vista;
   vista=v; $('#fab').classList.remove('escondido');
-  if(v==='inicio') tipearTotal = true;
   render();
   // 4) La pantalla nueva sale de abajo, como el papel de la caja
   if(cambio && !sinMovimiento()){ const m=$('#main'); m.classList.remove('entra'); void m.offsetWidth; m.classList.add('entra'); }
@@ -1874,9 +1838,7 @@ function guardarMovimiento(id){
     state.ultimosAmigos = amigos.join(', ');
   }
   save(); cerrarSheet(); render();
-  if(!id) imprimirTicket({tipo:tipoMov, monto, moneda:billetera(datos.billeteraId)?.moneda||'ARS', cat:categoria(catMov).nombre, nota:datos.nota});
-  else toast(tipoMov==='gasto'?'Gasto guardado':'Ingreso guardado');
-  if(!id && amigos.length) toast(`${amigos.length===1?amigos[0]+' te debe':listaNombres(amigos)+' te deben'} su parte`);
+  toast(amigos.length ? `Gasto guardado · ${amigos.length===1?amigos[0]+' te debe':listaNombres(amigos)+' te deben'} su parte` : tipoMov==='gasto'?'Gasto guardado':'Ingreso guardado');
 }
 
 // ----- Billetera -----
@@ -1959,6 +1921,7 @@ function formDeuda(id){
     <div id="dDirWrap" style="margin-top:10px"><div class="seg" id="dDir"><button data-v="debo">Yo le debo</button><button data-v="medeben">Me debe</button></div></div>
     <label>¿Qué es?</label>
     <input id="dDesc" placeholder="Ej: Zapatillas, Celular, Préstamo" value="${esc(d?d.descripcion:'')}">
+    <div id="dTarjetasWrap"></div>
     <label id="dQuienLbl">Tarjeta</label>
     <input id="dQuien" placeholder="Ej: Galicia" value="${esc(d?d.quien:'')}">
     <div id="dTarjetaWrap">
@@ -1992,16 +1955,45 @@ function formDeuda(id){
   };
   let red = d?(d.red||''):'', marca = d?(d.marca||''):'';
   document.querySelectorAll('#dRed .chip').forEach(x=>x.onclick=()=>{red = red===x.dataset.v?'':x.dataset.v; pint();});
-  activarSelectorMarcas('dMarca', idM=>{
-    marca = idM;
-    const m = MARCAS.find(x=>x.id===idM);
-    if(m && !$('#dQuien').value.trim()) $('#dQuien').value = m.nombre;
-  });
   document.querySelectorAll('#dClase button').forEach(x=>x.onclick=()=>{ if(x.dataset.v==='mensual') return formSuscripcion(); clase=x.dataset.v; pint(); });
   document.querySelectorAll('#dDir button').forEach(x=>x.onclick=()=>{dir=x.dataset.v;pint();});
   document.querySelectorAll('#dMon button').forEach(x=>x.onclick=()=>{mon=x.dataset.v;pint();});
   pint();
   formDeuda._get = ()=>({clase,dir,mon,red,marca});
+  // Tus tarjetas: tocás una y se completan solos el banco, la red (Visa, Master...), el color y el día de vencimiento
+  const ponerTarjeta = t => {
+    $('#dQuien').value = t.quien||''; red = t.red||''; marca = t.marca||'';
+    if(t.dia && !$('#dDia').value) $('#dDia').value = t.dia;
+    document.querySelectorAll('#dMarca .marca-op').forEach(x=>x.classList.toggle('on', x.dataset.id===marca));
+    pint(); pintarTarjetas();
+  };
+  const pintarTarjetas = () => {
+    const ts = tarjetasGuardadas();
+    $('#dTarjetasWrap').innerHTML = clase!=='tarjeta' || !ts.length ? '' : `
+      <label>Tus tarjetas</label>
+      <div class="billes" id="dTarjetas">${ts.map((t,i)=>`<button type="button" class="bille-op tarj-op ${t.marca===marca && t.red===red && (t.quien||'')===$('#dQuien').value.trim()?'on':''}" data-i="${i}">
+        ${miniTarjeta(t)}<span>${esc(t.quien||marcaDe(t.marca)?.nombre||'Tarjeta')}</span><small>${esc(t.red||'')}</small></button>`).join('')}</div>`;
+    document.querySelectorAll('#dTarjetas .tarj-op').forEach(x=>x.onclick=()=>ponerTarjeta(ts[x.dataset.i]));
+  };
+  // Si elegís el banco a mano, trae la red y el día de la última tarjeta de ese banco
+  activarSelectorMarcas('dMarca', idM=>{
+    marca = idM;
+    const m = MARCAS.find(x=>x.id===idM);
+    if(m && !$('#dQuien').value.trim()) $('#dQuien').value = m.nombre;
+    const t = tarjetasGuardadas().find(x=>x.marca===idM);
+    if(t && !red){ red = t.red||''; if(t.dia && !$('#dDia').value) $('#dDia').value = t.dia; }
+    pint(); pintarTarjetas();
+  });
+  document.querySelectorAll('#dClase button').forEach(x=>x.addEventListener('click', pintarTarjetas));
+  pintarTarjetas();
+}
+// Las tarjetas que ya usaste (sin repetir): banco, red, color y día de vencimiento
+function tarjetasGuardadas(){
+  const vistas = {}, lista = [];
+  const sumar = t => { if(!t.marca && !t.red && !t.quien) return; const k=[t.marca,t.red,(t.quien||'').toLowerCase()].join('|'); if(!vistas[k]){ vistas[k]=1; lista.push(t); } };
+  (state.tarjetas||[]).forEach(sumar);
+  state.deudas.filter(d=>d.clase==='tarjeta').slice().reverse().forEach(d=>sumar({marca:d.marca||'', red:d.red||'', quien:d.quien||'', dia:d.diaVencimiento||0}));
+  return lista;
 }
 function guardarDeuda(id){
   const {clase,dir,mon,red,marca} = formDeuda._get();
@@ -2012,6 +2004,11 @@ function guardarDeuda(id){
   const dia=Math.min(31,Math.max(0,parseInt($('#dDia').value)||0));
   const datos={clase, direccion:dir, descripcion, quien:$('#dQuien').value.trim(), moneda:mon, montoCuota, cuotasTotales, cuotasPagadas, diaVencimiento:dia,
                red: clase==='tarjeta'?red:'', marca: clase==='tarjeta'?marca:''};
+  // Recordar la tarjeta (banco + red + color + día) para la próxima
+  if(clase==='tarjeta' && (marca||red||datos.quien)){
+    const t = {marca, red, quien:datos.quien, dia};
+    state.tarjetas = [t, ...(state.tarjetas||[]).filter(x=>[x.marca,x.red,(x.quien||'').toLowerCase()].join('|')!==[t.marca,t.red,(t.quien||'').toLowerCase()].join('|'))];
+  }
   if(id){
     const d = state.deudas.find(x=>x.id===id);
     if(cuotasPagadas > d.cuotasPagadas) datos.ultimoPago = mesActual(); // si subiste "Ya pagadas" a mano, cuenta como pagada este mes
