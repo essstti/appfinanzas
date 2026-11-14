@@ -651,7 +651,7 @@ function hojaAvisoClave(){
   cargarFirebase().catch(()=>{});            // lo va cargando mientras leés (así el login abre al toque)
   abrirSheet(`
     <h3>${ici('candado')} Vas a necesitar una clave</h3>
-    <p class="sub">Para que nadie pueda leer tus datos, se guardan cifrados con una clave que elegís vos.</p>
+    <p class="sub">Cuentas claras, y solo para vos: todo en la nube, bajo tu clave.<br>La clave la elegís vos.</p>
     <p class="conv"><b>Acordate de esa clave.</b><br>La vas a necesitar para entrar desde otro celu o compu.<br>Sin ella no se puede.</p>
     <p class="conv"><b>Si te la olvidás, perdés todo lo que está en la nube.</b><br>Nadie la puede recuperar, ni el creador de la app.<br>Lo que tengas en tus dispositivos sigue estando.</p>
     <div class="actions"><button class="btn" onclick="cerrarSheet();nubeEntrar()">Entendido, iniciar sesión</button></div>`);
@@ -659,7 +659,7 @@ function hojaAvisoClave(){
 // Va a la página de Google para elegir la cuenta; Google te devuelve a la app (ver leerVueltaDeGoogle)
 function nubeEntrar(){
   if(!navigator.onLine){ toast('Necesitás internet para iniciar sesión'); return; }
-  if(!window.crypto?.subtle || !window.indexedDB){ toast('Este navegador no puede cifrar los datos'); return; }
+  if(!window.crypto?.subtle || !window.indexedDB){ toast('Este navegador no puede proteger los datos'); return; }
   const azar = () => Array.from(crypto.getRandomValues(new Uint8Array(16)), b=>b.toString(16).padStart(2,'0')).join('');
   const pedido = {state:azar(), nonce:azar()};
   localStorage.setItem('cc-login', JSON.stringify(pedido));
@@ -696,7 +696,7 @@ async function vincular(){
 function hojaClaveNueva(modo){
   abrirSheet(`
     <h3>${ici('candado')} ${modo==='nueva'?'Creá tu clave':'Clave nueva'}</h3>
-    <p class="sub">Tus datos se cifran en este dispositivo antes de subirse.<br>Nadie más puede leerlos: ni Google ni el creador de la app.</p>
+    <p class="sub">Cuentas claras, y solo para vos: todo en la nube, bajo tu clave.<br>Nadie más puede leerlos: ni Google ni el creador de la app.</p>
     ${modo==='reiniciar'?`<p class="conv">Se borra lo que había en tu cuenta y se sube lo de este dispositivo.<br>En tus otros dispositivos vas a tener que escribir la clave nueva.</p>`:''}
     <label>Clave (mínimo 8 caracteres)</label><input id="nClave" type="password" autocomplete="new-password" maxlength="200">
     <label>Repetila</label><input id="nClave2" type="password" autocomplete="new-password" maxlength="200">
@@ -707,7 +707,7 @@ async function crearClave(modo){
   const c1 = $('#nClave').value, c2 = $('#nClave2').value;
   if(c1.length<8){ toast('La clave tiene que tener 8 caracteres o más'); return; }
   if(c1!==c2){ toast('Las claves no coinciden'); return; }
-  const btn = $('#nOk'); btn.disabled = true; btn.textContent = 'Cifrando…';
+  const btn = $('#nOk'); btn.disabled = true; btn.textContent = 'Guardando…';
   try{
     const salt = crypto.getRandomValues(new Uint8Array(16));
     nubeClave = {key: await derivarClave(c1, salt), salt};
@@ -722,7 +722,7 @@ async function crearClave(modo){
     await guardarLlave(nubeUsuario.uid, nubeClave);
     nube = {uid:nubeUsuario.uid, email:nubeUsuario.email, nombre:nubeUsuario.displayName, foto:nubeUsuario.photoURL, rev, base:local, sinc:Date.now()}; guardarNube();
     nubeEstado = 'ok'; cerrarSheet(); refrescarNubeUI();
-    toast('¡Listo! Tus datos quedaron cifrados en tu cuenta');
+    toast('¡Listo! Tus datos quedaron guardados en tu cuenta');
     nubeProgramar(500);   // por si cambiaste algo mientras tanto
   }catch(e){
     nubeClave = null; btn.disabled = false; btn.textContent = 'Guardar y subir';
@@ -733,7 +733,7 @@ async function crearClave(modo){
 function hojaClave(){
   abrirSheet(`
     <h3>${ici('candado')} Escribí tu clave</h3>
-    <p class="sub">Es la clave que creaste para cifrar tus datos.<br>Se pide una sola vez en cada dispositivo.</p>
+    <p class="sub">Es la clave que creaste para proteger tus datos.<br>Se pide una sola vez en cada dispositivo.</p>
     <label>Clave</label><input id="eClave" type="password" autocomplete="current-password" maxlength="200" onkeydown="if(event.key==='Enter')probarClave()">
     <p class="conv" id="eError" hidden>Esa no es la clave. Probá de nuevo.</p>
     <div class="actions"><button class="btn" id="eOk" onclick="probarClave()">Entrar</button>
@@ -793,7 +793,7 @@ function terminarVinculo(modo){
 function hojaSalir(){
   abrirSheet(`
     <h3>Cerrar sesión</h3>
-    <p class="sub">Tus datos siguen guardados y cifrados en tu cuenta.</p>
+    <p class="sub">Tus datos siguen guardados en tu cuenta: solo los ves vos.</p>
     <div class="actions">
       <button class="btn sec" onclick="nubeSalir(false)">Cerrar sesión y dejar los datos acá</button>
       <button class="btn danger" onclick="nubeSalir(true)">Cerrar sesión y borrar los datos de este dispositivo</button>
@@ -927,7 +927,7 @@ function tarjetaNube(){
     if(nubeEstado==='cargando') return `<div class="card"><p class="s" style="margin:0">Conectando…</p></div>`;
     return `<div class="card">
       <p class="s" style="margin-top:0">Iniciá sesión para tener tus cuentas en el celu y en la compu.</p>
-      <p class="s">Se guardan cifradas con una clave que solo sabés vos: nadie más puede leerlas.</p>
+      <p class="s">Cuentas claras, y solo para vos: todo en la nube, bajo tu clave.</p>
       <div class="actions" style="margin-top:10px"><button class="btn" onclick="hojaAvisoClave()">${ici('nube')} Iniciar sesión con Google</button></div>
     </div>`;
   }
@@ -957,7 +957,7 @@ function tarjetaNube(){
       </div>
     </div>
     <div class="s" style="margin-top:12px">${estados[nubeEstado]||''}</div>
-    <p class="s">${ici('candado')} Tus datos viajan y se guardan cifrados.</p>
+    <p class="s">${ici('candado')} Cuentas claras, y solo para vos: todo en la nube, bajo tu clave.</p>
     <div class="actions" style="margin-top:10px">${boton}
       ${nubeUsuario?`<button class="btn sec" onclick="hojaSalir()">Cerrar sesión</button>`:''}
       ${nubeUsuario && nube?`<button class="btn danger" onclick="borrarNube()">Borrar mis datos de la nube</button>`:''}
@@ -2207,7 +2207,7 @@ function vAjustes(){
 
     <h2 class="con-ico">${ici('bajar')} Respaldo</h2>
     <div class="card">
-      <p class="s" style="margin-top:0">${nube?'Tus datos están en tu cuenta, cifrados. Igual podés bajarte un respaldo cuando quieras.':'Tus datos viven solo en este dispositivo. Bajate un respaldo de vez en cuando por si cambiás de teléfono.'}</p>
+      <p class="s" style="margin-top:0">${nube?'Tus datos están en tu cuenta y solo los ves vos. Igual podés bajarte un respaldo cuando quieras.':'Tus datos viven solo en este dispositivo. Bajate un respaldo de vez en cuando por si cambiás de teléfono.'}</p>
       <div class="actions" style="margin-top:10px">
         <button class="btn sec" onclick="exportar()">${ici('bajar')} Descargar respaldo</button>
         <button class="btn sec" onclick="$('#archivoImport').click()">${ici('subir')} Restaurar respaldo</button>
