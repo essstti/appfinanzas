@@ -145,6 +145,11 @@
   .welcome .emoji{font-size:64px}
   .welcome .ya-cuenta{margin-top:26px;padding-top:16px;border-top:1.5px dashed var(--punteo)}
   .welcome .ya-cuenta .btn{width:100%}
+  .cuenta-google{display:flex;align-items:center;gap:12px}
+  .cuenta-google .grow{min-width:0}
+  .cuenta-google .correo{overflow-wrap:anywhere}
+  .foto-cuenta{position:relative;flex:none;width:48px;height:48px;border-radius:50%;overflow:hidden;background:var(--card2);display:grid;place-items:center;font-weight:700}
+  .foto-cuenta img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
   .emojis{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:8px}
   .emojis button{font-size:28px;width:52px;height:52px;border-radius:4px;background:var(--card2)}
   .emojis button.on{outline:2px solid var(--accent)}
@@ -474,6 +479,8 @@ const FIREBASE_CONFIG = {
   messagingSenderId: "737638447695",
   appId: "1:737638447695:web:6ea8abe1cca2e5469cc83a"
 };
+// ID de cliente de Google (tampoco es secreto). Google te devuelve a esta misma página después de elegir la cuenta.
+const GOOGLE_CLIENT_ID = '737638447695-lcckcnkmp7g617lvcfhsf9loafmsotu1.apps.googleusercontent.com';
 const NUBE_KEY = 'cc-nube';             // en este dispositivo: {uid, email, rev, base, sinc}
 const NUBE_VUELTAS = 600000;            // cuántas vueltas para convertir la clave (más = más difícil de adivinar)
 const SOLO_ESTE_DISPOSITIVO = ['dolares','dolarAyer','tasas']; // cotizaciones del día: cada dispositivo las baja solo
@@ -608,12 +615,33 @@ async function paqueteNube(datos, rev){
   return {v:1, rev, salt:FB.Bytes.fromUint8Array(nubeClave.salt), iv:FB.Bytes.fromUint8Array(c.iv), datos:FB.Bytes.fromUint8Array(c.datos), gz:c.gz, actualizado:FB.serverTimestamp()};
 }
 function iniciarNube(){
-  const redirect = localStorage.getItem('cc-login-redirect');
-  if(!nube && !redirect) return;
+  const vuelta = leerVueltaDeGoogle();
+  if(!nube && !vuelta) return;
   if(nubeEstado==='fuera') nubeEstado = 'cargando';
-  cargarFirebase().then(()=>{
-    if(redirect){ localStorage.removeItem('cc-login-redirect'); FB.getRedirectResult(fbAuth).catch(()=>toast('No se pudo iniciar sesión')); }
+  refrescarNubeUI();
+  cargarFirebase().then(async ()=>{
+    if(!vuelta) return;
+    if(vuelta.error){ nubeEstado = 'fuera'; refrescarNubeUI(); if(vuelta.error!=='access_denied') toast('No se pudo iniciar sesión'); return; }
+    try{ await FB.signInWithCredential(fbAuth, FB.GoogleAuthProvider.credential(vuelta.idToken)); }
+    catch(e){ nubeEstado = 'fuera'; refrescarNubeUI(); toast(e.code==='auth/network-request-failed' ? 'Sin conexión: probá de nuevo' : 'No se pudo iniciar sesión'); }
   }).catch(()=>{ nubeEstado = navigator.onLine ? 'error' : 'sin-internet'; refrescarNubeUI(); });
+}
+// Cuando Google te devuelve a la app, trae la sesión en la dirección (después del #). La leemos y la borramos de ahí.
+function leerVueltaDeGoogle(){
+  const p = new URLSearchParams(location.hash.slice(1));
+  if(!p.has('id_token') && !p.has('error')) return null;
+  history.replaceState(null, '', location.pathname + location.search);
+  let pedido = null;
+  try{ pedido = JSON.parse(localStorage.getItem('cc-login')); }catch(e){}
+  localStorage.removeItem('cc-login');
+  if(!pedido || p.get('state')!==pedido.state) return {error:'state'};   // no lo pediste vos: se ignora
+  if(p.has('error')) return {error:p.get('error')};
+  const idToken = p.get('id_token');
+  try{
+    const datos = JSON.parse(atob(idToken.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));
+    if(datos.nonce!==pedido.nonce) return {error:'nonce'};
+  }catch(e){ return {error:'token'}; }
+  return {idToken};
 }
 
 // ----- Entrar y salir -----
@@ -628,26 +656,28 @@ function hojaAvisoClave(){
     <p class="conv"><b>Si te la olvidás, perdés todo lo que está en la nube.</b><br>Nadie la puede recuperar, ni el creador de la app.<br>Lo que tengas en tus dispositivos sigue estando.</p>
     <div class="actions"><button class="btn" onclick="cerrarSheet();nubeEntrar()">Entendido, iniciar sesión</button></div>`);
 }
-async function nubeEntrar(){
+// Va a la página de Google para elegir la cuenta; Google te devuelve a la app (ver leerVueltaDeGoogle)
+function nubeEntrar(){
   if(!navigator.onLine){ toast('Necesitás internet para iniciar sesión'); return; }
   if(!window.crypto?.subtle || !window.indexedDB){ toast('Este navegador no puede cifrar los datos'); return; }
-  if(!FB){ try{ await cargarFirebase(); }catch(e){ toast('No pude conectar. Probá de nuevo'); return; } }
-  const prov = new FB.GoogleAuthProvider();
-  prov.setCustomParameters({prompt:'select_account'});
-  try{ await FB.signInWithPopup(fbAuth, prov); }
-  catch(e){
-    if(e.code==='auth/popup-blocked' || e.code==='auth/operation-not-supported-in-this-environment'){
-      localStorage.setItem('cc-login-redirect','1');
-      try{ await FB.signInWithRedirect(fbAuth, prov); }catch(e2){ localStorage.removeItem('cc-login-redirect'); toast('No se pudo iniciar sesión'); }
-    }else if(e.code!=='auth/popup-closed-by-user' && e.code!=='auth/cancelled-popup-request'){
-      toast(e.code==='auth/network-request-failed' ? 'Sin conexión: probá de nuevo' : 'No se pudo iniciar sesión');
-    }
-  }
+  const azar = () => Array.from(crypto.getRandomValues(new Uint8Array(16)), b=>b.toString(16).padStart(2,'0')).join('');
+  const pedido = {state:azar(), nonce:azar()};
+  localStorage.setItem('cc-login', JSON.stringify(pedido));
+  const q = new URLSearchParams({
+    client_id: GOOGLE_CLIENT_ID,
+    redirect_uri: new URL('./', location.href).href,     // https://essstti.github.io/appfinanzas/
+    response_type: 'id_token',
+    scope: 'openid email profile',
+    prompt: 'select_account',
+    state: pedido.state, nonce: pedido.nonce,
+  });
+  location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + q;
 }
 async function alCambiarCuenta(u){
   nubeUsuario = u;
   if(!u){ nubeClave = null; nubeEstado = 'fuera'; refrescarNubeUI(); return; }
   if(nube && nube.uid!==u.uid){ nube = null; guardarNube(); }   // entró otra cuenta en este dispositivo
+  if(nube && (nube.foto!==u.photoURL || nube.nombre!==u.displayName || nube.email!==u.email)){ nube.foto = u.photoURL; nube.nombre = u.displayName; nube.email = u.email; guardarNube(); }
   const g = await leerLlave(u.uid);
   nubeClave = g && g.key ? g : null;
   if(nube && nubeClave){ nubeEstado = 'ok'; refrescarNubeUI(); sincronizar(); }
@@ -690,7 +720,7 @@ async function crearClave(modo){
       tx.set(docNube(), await paqueteNube(local, rev));
     });
     await guardarLlave(nubeUsuario.uid, nubeClave);
-    nube = {uid:nubeUsuario.uid, email:nubeUsuario.email, rev, base:local, sinc:Date.now()}; guardarNube();
+    nube = {uid:nubeUsuario.uid, email:nubeUsuario.email, nombre:nubeUsuario.displayName, foto:nubeUsuario.photoURL, rev, base:local, sinc:Date.now()}; guardarNube();
     nubeEstado = 'ok'; cerrarSheet(); refrescarNubeUI();
     toast('¡Listo! Tus datos quedaron cifrados en tu cuenta');
     nubeProgramar(500);   // por si cambiaste algo mientras tanto
@@ -752,7 +782,7 @@ function terminarVinculo(modo){
   if(!remotoPendiente || !nubeUsuario) return;
   const {datos, rev} = remotoPendiente; remotoPendiente = null;
   const unido = modo==='unir' ? unir3(undefined, datos, emparejarBilleteras(paraNube(state), datos)) : datos;
-  nube = {uid:nubeUsuario.uid, email:nubeUsuario.email, rev, base:datos, sinc:Date.now()}; guardarNube();
+  nube = {uid:nubeUsuario.uid, email:nubeUsuario.email, nombre:nubeUsuario.displayName, foto:nubeUsuario.photoURL, rev, base:datos, sinc:Date.now()}; guardarNube();
   nubeEstado = 'ok';
   cerrarSheet();
   ponerEstadoDeNube(unido);
@@ -914,9 +944,19 @@ function tarjetaNube(){
   if(!nubeUsuario) boton = `<button class="btn" onclick="nubeEntrar()">${ici('nube')} Volver a iniciar sesión</button>`;
   else if(nubeEstado==='falta-clave') boton = `<button class="btn" onclick="hojaClave()">${ici('candado')} Escribir mi clave</button>`;
   else if(nubeEstado==='sin-vincular') boton = `<button class="btn" onclick="vincular()">Terminar de conectar</button>`;
+  const nombre = esc(nubeUsuario?.displayName || nube?.nombre || '');
+  const foto = nubeUsuario?.photoURL || nube?.foto || '';
+  const inicial = esc((nombre || correo || '?').trim().charAt(0).toUpperCase());
   return `<div class="card">
-    <div class="t">${correo || 'Tu cuenta'}</div>
-    <div class="s">${estados[nubeEstado]||''}</div>
+    <div class="cuenta-google">
+      <div class="foto-cuenta">${/^https:\/\//.test(foto) ? `<img src="${esc(foto)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : ''}<span>${inicial}</span></div>
+      <div class="grow">
+        <div class="s">${ici('tilde')} Cuenta enlazada con Google</div>
+        ${nombre?`<div class="t">${nombre}</div>`:''}
+        <div class="s correo">${correo || 'Tu cuenta'}</div>
+      </div>
+    </div>
+    <div class="s" style="margin-top:12px">${estados[nubeEstado]||''}</div>
     <p class="s">${ici('candado')} Tus datos viajan y se guardan cifrados.</p>
     <div class="actions" style="margin-top:10px">${boton}
       ${nubeUsuario?`<button class="btn sec" onclick="hojaSalir()">Cerrar sesión</button>`:''}
@@ -1591,6 +1631,7 @@ function renderBienvenida(){
              ${nubeEstado==='cargando'?'<p class="s">Buscando tus datos…</p>'
                : nubeEstado==='falta-clave'?`<button class="btn sec" onclick="hojaClave()">${ici('candado')} Escribir mi clave</button>`
                : nubeEstado==='sin-vincular'?`<button class="btn sec" onclick="vincular()">Terminar de conectar</button>`:''}`
+          : nubeEstado==='cargando' ? `<p class="s">Conectando con Google…</p>`
           : `<p class="s">¿Ya la usás en otro dispositivo?</p>
              <button class="btn sec" onclick="hojaAvisoClave()">${ici('nube')} Iniciar sesión con Google</button>`}
       </div>
