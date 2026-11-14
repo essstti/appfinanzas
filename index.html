@@ -9,10 +9,10 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Cuentas Claras">
-<link rel="manifest" href="manifest.webmanifest?v=15.0">
-<link rel="apple-touch-icon" href="icons/icon-180.png?v=15.0">
-<link rel="icon" href="icons/favicon.svg?v=15.0" type="image/svg+xml">
-<link rel="alternate icon" href="icons/icon-192.png?v=15.0">
+<link rel="manifest" href="manifest.webmanifest?v=15.1">
+<link rel="apple-touch-icon" href="icons/icon-180.png?v=15.1">
+<link rel="icon" href="icons/favicon.svg?v=15.1" type="image/svg+xml">
+<link rel="alternate icon" href="icons/icon-192.png?v=15.1">
 <style>
   /* ============================================================
      DISEÑO "TICKET DEL SÚPER"
@@ -370,7 +370,7 @@ body.golpe #main{animation:golpe .32s .3s}
    ============================================================ */
 
 const STORAGE_KEY = 'finanzas-v1';
-const VERSION_APP = '15.0'; // subilo junto con el de sw.js, así sabés en Ajustes qué versión tenés
+const VERSION_APP = '15.1'; // subilo junto con el de sw.js, así sabés en Ajustes qué versión tenés
 
 // Logo "Cuentas claras": usa los colores del modo actual (azul de día, cereza de noche)
 function logoSello(u='l', A='var(--txt)', B='var(--accent)', P='var(--bg)'){
@@ -617,10 +617,21 @@ function iniciarNube(){
 }
 
 // ----- Entrar y salir -----
+// Antes de iniciar sesión por primera vez: avisar que hace falta una clave y que no se puede recuperar
+function hojaAvisoClave(){
+  if(nube){ nubeEntrar(); return; }          // ya estaba conectado: solo vuelve a entrar
+  cargarFirebase().catch(()=>{});            // lo va cargando mientras leés (así el login abre al toque)
+  abrirSheet(`
+    <h3>${ici('candado')} Vas a necesitar una clave</h3>
+    <p class="sub">Para que nadie pueda leer tus datos, se guardan cifrados con una clave que elegís vos.</p>
+    <p class="conv"><b>Acordate de esa clave.</b><br>La vas a necesitar para entrar desde otro celu o compu.<br>Sin ella no se puede.</p>
+    <p class="conv"><b>Si te la olvidás, perdés todo lo que está en la nube.</b><br>Nadie la puede recuperar, ni el creador de la app.<br>Lo que tengas en tus dispositivos sigue estando.</p>
+    <div class="actions"><button class="btn" onclick="cerrarSheet();nubeEntrar()">Entendido, iniciar sesión</button></div>`);
+}
 async function nubeEntrar(){
   if(!navigator.onLine){ toast('Necesitás internet para iniciar sesión'); return; }
   if(!window.crypto?.subtle || !window.indexedDB){ toast('Este navegador no puede cifrar los datos'); return; }
-  try{ await cargarFirebase(); }catch(e){ toast('No pude conectar. Probá de nuevo'); return; }
+  if(!FB){ try{ await cargarFirebase(); }catch(e){ toast('No pude conectar. Probá de nuevo'); return; } }
   const prov = new FB.GoogleAuthProvider();
   prov.setCustomParameters({prompt:'select_account'});
   try{ await FB.signInWithPopup(fbAuth, prov); }
@@ -659,7 +670,7 @@ function hojaClaveNueva(modo){
     ${modo==='reiniciar'?`<p class="conv">Se borra lo que había en tu cuenta y se sube lo de este dispositivo.<br>En tus otros dispositivos vas a tener que escribir la clave nueva.</p>`:''}
     <label>Clave (mínimo 8 caracteres)</label><input id="nClave" type="password" autocomplete="new-password" maxlength="200">
     <label>Repetila</label><input id="nClave2" type="password" autocomplete="new-password" maxlength="200">
-    <p class="conv">Anotala en un lugar seguro.<br>Si te la olvidás, lo de la nube no se puede recuperar.<br>Lo que tengas en tus dispositivos sigue estando.</p>
+    <p class="conv"><b>Anotala en un lugar seguro.</b><br>La vas a necesitar para entrar desde otro dispositivo: sin ella no se puede.<br><b>Si te la olvidás, perdés todo lo que está en la nube.</b> Nadie la puede recuperar.</p>
     <div class="actions"><button class="btn" id="nOk" onclick="crearClave('${modo}')">Guardar y subir</button></div>`);
 }
 async function crearClave(modo){
@@ -887,7 +898,7 @@ function tarjetaNube(){
     return `<div class="card">
       <p class="s" style="margin-top:0">Iniciá sesión para tener tus cuentas en el celu y en la compu.</p>
       <p class="s">Se guardan cifradas con una clave que solo sabés vos: nadie más puede leerlas.</p>
-      <div class="actions" style="margin-top:10px"><button class="btn" onclick="nubeEntrar()">${ici('nube')} Iniciar sesión con Google</button></div>
+      <div class="actions" style="margin-top:10px"><button class="btn" onclick="hojaAvisoClave()">${ici('nube')} Iniciar sesión con Google</button></div>
     </div>`;
   }
   const estados = {
@@ -1581,7 +1592,7 @@ function renderBienvenida(){
                : nubeEstado==='falta-clave'?`<button class="btn sec" onclick="hojaClave()">${ici('candado')} Escribir mi clave</button>`
                : nubeEstado==='sin-vincular'?`<button class="btn sec" onclick="vincular()">Terminar de conectar</button>`:''}`
           : `<p class="s">¿Ya la usás en otro dispositivo?</p>
-             <button class="btn sec" onclick="nubeEntrar()">${ici('nube')} Iniciar sesión con Google</button>`}
+             <button class="btn sec" onclick="hojaAvisoClave()">${ici('nube')} Iniciar sesión con Google</button>`}
       </div>
     </div>`;
 }
