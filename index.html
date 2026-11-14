@@ -9,10 +9,10 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Cuentas Claras">
-<link rel="manifest" href="manifest.webmanifest?v=15.0">
-<link rel="apple-touch-icon" href="icons/icon-180.png?v=15.0">
-<link rel="icon" href="icons/favicon.svg?v=15.0" type="image/svg+xml">
-<link rel="alternate icon" href="icons/icon-192.png?v=15.0">
+<link rel="manifest" href="manifest.webmanifest?v=15.1">
+<link rel="apple-touch-icon" href="icons/icon-180.png?v=15.1">
+<link rel="icon" href="icons/favicon.svg?v=15.1" type="image/svg+xml">
+<link rel="alternate icon" href="icons/icon-192.png?v=15.1">
 <style>
   /* ============================================================
      DISEÑO "TICKET DEL SÚPER"
@@ -143,6 +143,8 @@
   .seg-chico button{padding:10px 2px;font-size:12px}
   .welcome{min-height:80vh;display:flex;flex-direction:column;justify-content:center;text-align:center}
   .welcome .emoji{font-size:64px}
+  .welcome .ya-cuenta{margin-top:26px;padding-top:16px;border-top:1.5px dashed var(--punteo)}
+  .welcome .ya-cuenta .btn{width:100%}
   .emojis{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:8px}
   .emojis button{font-size:28px;width:52px;height:52px;border-radius:4px;background:var(--card2)}
   .emojis button.on{outline:2px solid var(--accent)}
@@ -363,11 +365,12 @@ body.golpe #main{animation:golpe .32s .3s}
 <script>
 /* ============================================================
    Cuentas Claras — app personal (PWA)
-   Todo se guarda en el teléfono (localStorage). Nada se sube a internet.
+   Todo se guarda en el dispositivo (localStorage). Si iniciás sesión con Google,
+   además se sube a tu cuenta CIFRADO con tu clave (ver «NUBE» más abajo).
    ============================================================ */
 
 const STORAGE_KEY = 'finanzas-v1';
-const VERSION_APP = '15.0'; // subilo junto con el de sw.js, así sabés en Ajustes qué versión tenés
+const VERSION_APP = '15.1'; // subilo junto con el de sw.js, así sabés en Ajustes qué versión tenés
 
 // Logo "Cuentas claras": usa los colores del modo actual (azul de día, cereza de noche)
 function logoSello(u='l', A='var(--txt)', B='var(--accent)', P='var(--bg)'){
@@ -449,6 +452,477 @@ function loadState(){
 function save(){
   try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
   catch(e){ toast('No se pudo guardar'); }
+  nubeProgramar();   // si iniciaste sesión, lo sube cifrado en unos segundos
+}
+
+// ============================================================
+//  NUBE: iniciar sesión con Google y tener los mismos datos en el celu y la compu
+//  - Los datos se CIFRAN en el dispositivo antes de subirse, con una clave que solo sabe
+//    el usuario (AES-GCM de 256 bits; la clave se deriva con PBKDF2-SHA256, 600.000 vueltas).
+//    En Firebase queda todo ilegible: ni Google ni el dueño de la app pueden leerlo.
+//  - Cada cuenta de Google solo puede leer y escribir SU documento (reglas de Firestore).
+//  - Sincroniza "a tres puntas": compara lo último sincronizado (base) con lo de este
+//    dispositivo y lo de la nube, y junta los cambios de los dos lados sin duplicar.
+//  - Sin sesión iniciada la app funciona igual que siempre, solo en el dispositivo.
+// ============================================================
+// Estos datos no son secretos: identifican al proyecto. Lo que protege son las reglas y el cifrado.
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyArEu0_Z4JGY57n5u3tR1eqqeCZd0bCLwI",
+  authDomain: "cuentas-claras-4238f.firebaseapp.com",
+  projectId: "cuentas-claras-4238f",
+  storageBucket: "cuentas-claras-4238f.firebasestorage.app",
+  messagingSenderId: "737638447695",
+  appId: "1:737638447695:web:6ea8abe1cca2e5469cc83a"
+};
+const NUBE_KEY = 'cc-nube';             // en este dispositivo: {uid, email, rev, base, sinc}
+const NUBE_VUELTAS = 600000;            // cuántas vueltas para convertir la clave (más = más difícil de adivinar)
+const SOLO_ESTE_DISPOSITIVO = ['dolares','dolarAyer','tasas']; // cotizaciones del día: cada dispositivo las baja solo
+let nube = (()=>{ try{ return JSON.parse(localStorage.getItem(NUBE_KEY))||null; }catch(e){ return null; } })();
+let FB = null, fbAuth = null, fbDb = null;
+let nubeUsuario = null;      // la cuenta de Google con la que entraste (o null)
+let nubeClave = null;        // {key, salt}: la llave para cifrar (o null si falta escribir la clave)
+let nubeEstado = 'fuera';    // fuera | cargando | sin-vincular | falta-clave | ok | sin-internet | error
+let nubeTimer = null, nubeCorriendo = false, nubeOtraVez = false, aplicandoNube = false;
+let remotoPendiente = null;  // datos de la cuenta mientras elegís si unirlos con los de acá
+
+function guardarNube(){ try{ nube ? localStorage.setItem(NUBE_KEY, JSON.stringify(nube)) : localStorage.removeItem(NUBE_KEY); }catch(e){} }
+function errorNube(c){ const e = new Error(c); e.code = c; return e; }
+
+// ----- Qué se sube: todo menos las cotizaciones del día -----
+function paraNube(s){
+  const c = JSON.parse(JSON.stringify(s));
+  SOLO_ESTE_DISPOSITIVO.forEach(k=>delete c[k]);
+  const d = c.dolar||{}, u = c.usdt||{};
+  c.dolar = d.manual ? {tipo:d.tipo, manual:true, valor:d.valor, actualizado:d.actualizado} : {tipo:d.tipo, manual:false};
+  c.usdt  = u.manual ? {exchange:u.exchange, manual:true, valor:u.valor, actualizado:u.actualizado} : {exchange:u.exchange, manual:false};
+  return c;
+}
+// Arma el estado de la app con lo que vino de la nube, conservando las cotizaciones de este dispositivo
+function desdeNube(datos, local){
+  const s = Object.assign(estadoVacio(), JSON.parse(JSON.stringify(datos)));
+  SOLO_ESTE_DISPOSITIVO.forEach(k=>{ if(local[k]!==undefined) s[k] = local[k]; });
+  const d = datos.dolar||{}, u = datos.usdt||{};
+  if(d.manual) s.dolar = {...local.dolar, ...d};
+  else{
+    const tipo = d.tipo || local.dolar.tipo;
+    const mismo = !local.dolar.manual && local.dolar.tipo===tipo;
+    s.dolar = {...local.dolar, tipo, manual:false, valor: mismo ? local.dolar.valor : (local.dolares?.valores?.[tipo]?.venta ?? null)};
+  }
+  if(u.manual) s.usdt = {...local.usdt, ...u};
+  else{
+    const ex = u.exchange || local.usdt.exchange;
+    const mismo = !local.usdt.manual && local.usdt.exchange===ex;
+    s.usdt = {...local.usdt, exchange:ex, manual:false, valor: mismo ? local.usdt.valor : null};
+  }
+  return s;
+}
+
+// ----- Juntar cambios (a tres puntas) -----
+// Compara sin importar el orden de las propiedades
+function textoEstable(v){ return JSON.stringify(v, (k,x)=> x && typeof x==='object' && !Array.isArray(x) ? Object.keys(x).sort().reduce((o,c)=>(o[c]=x[c],o),{}) : x); }
+function igual(a,b){ return textoEstable(a)===textoEstable(b); }
+const esObjeto = v => !!v && typeof v==='object' && !Array.isArray(v);
+const listaConIds = (...ls) => ls.some(a=>Array.isArray(a)&&a.length) && ls.every(a=>a===undefined || (Array.isArray(a) && a.every(x=>esObjeto(x) && x.id!=null)));
+// b = lo último sincronizado, l = lo de este lado, r = lo del otro lado. Si los dos cambiaron lo mismo, gana l.
+function unir3(b, l, r){
+  if(igual(l,r)) return l;
+  if(igual(l,b)) return r;           // acá no cambió: vale lo de allá
+  if(igual(r,b)) return l;           // allá no cambió: vale lo de acá
+  if(l===undefined) return r;        // acá se borró pero allá lo cambiaron: lo dejamos
+  if(r===undefined) return l;
+  if(esObjeto(l) && esObjeto(r)){
+    const bb = esObjeto(b) ? b : {}, o = {};
+    new Set([...Object.keys(l), ...Object.keys(r)]).forEach(k=>{ const v = unir3(bb[k], l[k], r[k]); if(v!==undefined) o[k] = v; });
+    return o;
+  }
+  if(Array.isArray(l) && Array.isArray(r) && listaConIds(b,l,r)){
+    const mapa = a => new Map((Array.isArray(a)?a:[]).map(x=>[String(x.id), x]));
+    const mb = mapa(b), ml = mapa(l), mr = mapa(r), out = [];
+    [...ml.keys(), ...[...mr.keys()].filter(id=>!ml.has(id))].forEach(id=>{
+      const v = unir3(mb.get(id), ml.get(id), mr.get(id)); if(v!==undefined) out.push(v);
+    });
+    return out;
+  }
+  return l;
+}
+// Al juntar por primera vez: si las dos partes tienen una billetera igual (ej. «Efectivo» en pesos), es la misma
+function emparejarBilleteras(l, r){
+  const norm = t => String(t||'').trim().toLowerCase();
+  const mapa = {}, usadas = new Set();
+  (l.billeteras||[]).forEach(b=>{
+    if((r.billeteras||[]).some(x=>x.id===b.id)) return;
+    const o = (r.billeteras||[]).find(x=>!usadas.has(x.id) && x.moneda===b.moneda && norm(x.nombre)===norm(b.nombre) && !(l.billeteras||[]).some(y=>y.id===x.id));
+    if(o){ mapa[b.id] = o.id; usadas.add(o.id); }
+  });
+  if(!Object.keys(mapa).length) return l;
+  const c = JSON.parse(JSON.stringify(l));
+  c.billeteras = c.billeteras.map(b=>mapa[b.id] ? {...b, id:mapa[b.id]} : b);
+  ['movimientos','suscripciones'].forEach(k=>(c[k]||[]).forEach(x=>{ if(mapa[x.billeteraId]) x.billeteraId = mapa[x.billeteraId]; }));
+  return c;
+}
+
+// ----- Cifrado (todo pasa en el dispositivo) -----
+const codTxt = new TextEncoder(), decTxt = new TextDecoder();
+async function derivarClave(clave, salt){
+  const base = await crypto.subtle.importKey('raw', codTxt.encode(clave.normalize('NFC')), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({name:'PBKDF2', salt, iterations:NUBE_VUELTAS, hash:'SHA-256'}, base, {name:'AES-GCM', length:256}, false, ['encrypt','decrypt']);
+}
+async function pasarPorStream(bytes, stream){ return new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(stream)).arrayBuffer()); }
+async function cifrar(key, obj, uidCuenta){
+  let bytes = codTxt.encode(JSON.stringify(obj)), gz = false;
+  if(window.CompressionStream){ bytes = await pasarPorStream(bytes, new CompressionStream('gzip')); gz = true; } // achica antes de cifrar
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const datos = new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM', iv, additionalData:codTxt.encode(uidCuenta)}, key, bytes));
+  return {iv, datos, gz};
+}
+async function descifrar(key, {iv, datos, gz}, uidCuenta){
+  let bytes = new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM', iv, additionalData:codTxt.encode(uidCuenta)}, key, datos));
+  if(gz) bytes = await pasarPorStream(bytes, new DecompressionStream('gzip'));
+  return JSON.parse(decTxt.decode(bytes));
+}
+const mismosBytes = (a,b) => !!a && !!b && a.length===b.length && a.every((x,i)=>x===b[i]);
+// La llave queda guardada en este dispositivo (sin poder sacarla de ahí), así la clave se escribe una sola vez
+function abrirBaseClaves(){ return new Promise((ok,mal)=>{ const r = indexedDB.open('cuentas-claras-clave', 1); r.onupgradeneeded = ()=>r.result.createObjectStore('claves'); r.onsuccess = ()=>ok(r.result); r.onerror = ()=>mal(r.error); }); }
+async function leerLlave(uidCuenta){
+  try{ const db = await abrirBaseClaves(); return await new Promise(ok=>{ const q = db.transaction('claves').objectStore('claves').get(uidCuenta); q.onsuccess = ()=>ok(q.result||null); q.onerror = ()=>ok(null); }); }
+  catch(e){ return null; }
+}
+async function guardarLlave(uidCuenta, valor){
+  try{ const db = await abrirBaseClaves(); await new Promise(ok=>{ const t = db.transaction('claves','readwrite'); const s = t.objectStore('claves'); valor ? s.put(valor, uidCuenta) : s.delete(uidCuenta); t.oncomplete = ok; t.onerror = ok; }); }
+  catch(e){}
+}
+
+// ----- Firebase -----
+async function cargarFirebase(){
+  if(FB) return FB;
+  const m = await import('./nube/firebase.js');
+  const app = m.initializeApp(FIREBASE_CONFIG);
+  fbAuth = m.getAuth(app); fbDb = m.getFirestore(app); FB = m;
+  m.onAuthStateChanged(fbAuth, u=>alCambiarCuenta(u));
+  return FB;
+}
+const docNube = () => FB.doc(fbDb, 'usuarios', nubeUsuario.uid);
+function leerDoc(d){ return {rev:d.rev, salt:d.salt.toUint8Array(), iv:d.iv.toUint8Array(), datos:d.datos.toUint8Array(), gz:!!d.gz}; }
+async function paqueteNube(datos, rev){
+  const c = await cifrar(nubeClave.key, datos, nubeUsuario.uid);
+  return {v:1, rev, salt:FB.Bytes.fromUint8Array(nubeClave.salt), iv:FB.Bytes.fromUint8Array(c.iv), datos:FB.Bytes.fromUint8Array(c.datos), gz:c.gz, actualizado:FB.serverTimestamp()};
+}
+function iniciarNube(){
+  const redirect = localStorage.getItem('cc-login-redirect');
+  if(!nube && !redirect) return;
+  if(nubeEstado==='fuera') nubeEstado = 'cargando';
+  cargarFirebase().then(()=>{
+    if(redirect){ localStorage.removeItem('cc-login-redirect'); FB.getRedirectResult(fbAuth).catch(()=>toast('No se pudo iniciar sesión')); }
+  }).catch(()=>{ nubeEstado = navigator.onLine ? 'error' : 'sin-internet'; refrescarNubeUI(); });
+}
+
+// ----- Entrar y salir -----
+// Antes de iniciar sesión por primera vez: avisar que hace falta una clave y que no se puede recuperar
+function hojaAvisoClave(){
+  if(nube){ nubeEntrar(); return; }          // ya estaba conectado: solo vuelve a entrar
+  cargarFirebase().catch(()=>{});            // lo va cargando mientras leés (así el login abre al toque)
+  abrirSheet(`
+    <h3>${ici('candado')} Vas a necesitar una clave</h3>
+    <p class="sub">Para que nadie pueda leer tus datos, se guardan cifrados con una clave que elegís vos.</p>
+    <p class="conv"><b>Acordate de esa clave.</b><br>La vas a necesitar para entrar desde otro celu o compu.<br>Sin ella no se puede.</p>
+    <p class="conv"><b>Si te la olvidás, perdés todo lo que está en la nube.</b><br>Nadie la puede recuperar, ni el creador de la app.<br>Lo que tengas en tus dispositivos sigue estando.</p>
+    <div class="actions"><button class="btn" onclick="cerrarSheet();nubeEntrar()">Entendido, iniciar sesión</button></div>`);
+}
+async function nubeEntrar(){
+  if(!navigator.onLine){ toast('Necesitás internet para iniciar sesión'); return; }
+  if(!window.crypto?.subtle || !window.indexedDB){ toast('Este navegador no puede cifrar los datos'); return; }
+  if(!FB){ try{ await cargarFirebase(); }catch(e){ toast('No pude conectar. Probá de nuevo'); return; } }
+  const prov = new FB.GoogleAuthProvider();
+  prov.setCustomParameters({prompt:'select_account'});
+  try{ await FB.signInWithPopup(fbAuth, prov); }
+  catch(e){
+    if(e.code==='auth/popup-blocked' || e.code==='auth/operation-not-supported-in-this-environment'){
+      localStorage.setItem('cc-login-redirect','1');
+      try{ await FB.signInWithRedirect(fbAuth, prov); }catch(e2){ localStorage.removeItem('cc-login-redirect'); toast('No se pudo iniciar sesión'); }
+    }else if(e.code!=='auth/popup-closed-by-user' && e.code!=='auth/cancelled-popup-request'){
+      toast(e.code==='auth/network-request-failed' ? 'Sin conexión: probá de nuevo' : 'No se pudo iniciar sesión');
+    }
+  }
+}
+async function alCambiarCuenta(u){
+  nubeUsuario = u;
+  if(!u){ nubeClave = null; nubeEstado = 'fuera'; refrescarNubeUI(); return; }
+  if(nube && nube.uid!==u.uid){ nube = null; guardarNube(); }   // entró otra cuenta en este dispositivo
+  const g = await leerLlave(u.uid);
+  nubeClave = g && g.key ? g : null;
+  if(nube && nubeClave){ nubeEstado = 'ok'; refrescarNubeUI(); sincronizar(); }
+  else if(nube){ nubeEstado = 'falta-clave'; refrescarNubeUI(); }
+  else vincular();
+}
+// Primera vez en este dispositivo: ¿la cuenta ya tiene datos?
+async function vincular(){
+  if(!nubeUsuario) return;
+  nubeEstado = 'cargando'; refrescarNubeUI();
+  let snap;
+  try{ snap = await FB.getDoc(docNube()); }catch(e){ manejarErrorNube(e); return; }
+  nubeEstado = 'sin-vincular'; refrescarNubeUI();
+  if(snap.exists()) hojaClave(); else hojaClaveNueva('nueva');
+}
+function hojaClaveNueva(modo){
+  abrirSheet(`
+    <h3>${ici('candado')} ${modo==='nueva'?'Creá tu clave':'Clave nueva'}</h3>
+    <p class="sub">Tus datos se cifran en este dispositivo antes de subirse.<br>Nadie más puede leerlos: ni Google ni el creador de la app.</p>
+    ${modo==='reiniciar'?`<p class="conv">Se borra lo que había en tu cuenta y se sube lo de este dispositivo.<br>En tus otros dispositivos vas a tener que escribir la clave nueva.</p>`:''}
+    <label>Clave (mínimo 8 caracteres)</label><input id="nClave" type="password" autocomplete="new-password" maxlength="200">
+    <label>Repetila</label><input id="nClave2" type="password" autocomplete="new-password" maxlength="200">
+    <p class="conv"><b>Anotala en un lugar seguro.</b><br>La vas a necesitar para entrar desde otro dispositivo: sin ella no se puede.<br><b>Si te la olvidás, perdés todo lo que está en la nube.</b> Nadie la puede recuperar.</p>
+    <div class="actions"><button class="btn" id="nOk" onclick="crearClave('${modo}')">Guardar y subir</button></div>`);
+}
+async function crearClave(modo){
+  const c1 = $('#nClave').value, c2 = $('#nClave2').value;
+  if(c1.length<8){ toast('La clave tiene que tener 8 caracteres o más'); return; }
+  if(c1!==c2){ toast('Las claves no coinciden'); return; }
+  const btn = $('#nOk'); btn.disabled = true; btn.textContent = 'Cifrando…';
+  try{
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    nubeClave = {key: await derivarClave(c1, salt), salt};
+    const local = paraNube(state);
+    let rev = 1;
+    await FB.runTransaction(fbDb, async tx=>{
+      const snap = await tx.get(docNube());
+      if(snap.exists() && modo==='nueva') throw errorNube('ya-existe');   // se creó recién desde otro dispositivo
+      rev = snap.exists() ? (snap.data().rev||0)+1 : 1;
+      tx.set(docNube(), await paqueteNube(local, rev));
+    });
+    await guardarLlave(nubeUsuario.uid, nubeClave);
+    nube = {uid:nubeUsuario.uid, email:nubeUsuario.email, rev, base:local, sinc:Date.now()}; guardarNube();
+    nubeEstado = 'ok'; cerrarSheet(); refrescarNubeUI();
+    toast('¡Listo! Tus datos quedaron cifrados en tu cuenta');
+    nubeProgramar(500);   // por si cambiaste algo mientras tanto
+  }catch(e){
+    nubeClave = null; btn.disabled = false; btn.textContent = 'Guardar y subir';
+    if(e.code==='ya-existe'){ cerrarSheet(); vincular(); }
+    else manejarErrorNube(e, true);
+  }
+}
+function hojaClave(){
+  abrirSheet(`
+    <h3>${ici('candado')} Escribí tu clave</h3>
+    <p class="sub">Es la clave que creaste para cifrar tus datos.<br>Se pide una sola vez en cada dispositivo.</p>
+    <label>Clave</label><input id="eClave" type="password" autocomplete="current-password" maxlength="200" onkeydown="if(event.key==='Enter')probarClave()">
+    <p class="conv" id="eError" hidden>Esa no es la clave. Probá de nuevo.</p>
+    <div class="actions"><button class="btn" id="eOk" onclick="probarClave()">Entrar</button>
+    <button class="btn sec sm" onclick="olvideClave()">Me la olvidé</button></div>`);
+}
+async function probarClave(){
+  const clave = $('#eClave').value; if(!clave) return;
+  const btn = $('#eOk'); btn.disabled = true; btn.textContent = 'Revisando…'; $('#eError').hidden = true;
+  try{
+    const snap = await FB.getDoc(docNube());
+    if(!snap.exists()){ cerrarSheet(); vincular(); return; }
+    const d = leerDoc(snap.data());
+    const key = await derivarClave(clave, d.salt);
+    let datos;
+    try{ datos = await descifrar(key, d, nubeUsuario.uid); }
+    catch(e){ $('#eError').hidden = false; btn.disabled = false; btn.textContent = 'Entrar'; return; }
+    nubeClave = {key, salt:d.salt};
+    await guardarLlave(nubeUsuario.uid, nubeClave);
+    if(nube){ nubeEstado = 'ok'; cerrarSheet(); toast('Clave correcta'); sincronizar(); return; }
+    remotoPendiente = {datos, rev:d.rev};
+    // Si acá no hay nada tuyo, traemos lo de la cuenta directamente
+    if(!state.usuario) terminarVinculo('cuenta');
+    else hojaUnir();
+  }catch(e){ btn.disabled = false; btn.textContent = 'Entrar'; manejarErrorNube(e, true); }
+}
+function olvideClave(){
+  abrirSheet(`
+    <h3>¿Te olvidaste la clave?</h3>
+    <p class="sub">No hay forma de recuperarla: justamente por eso nadie más puede leer tus datos.</p>
+    <p class="conv">Podés crear una clave nueva y empezar de cero en la nube con lo que tenés en este dispositivo.<br>Lo que estaba en la nube se pierde.</p>
+    <div class="actions"><button class="btn danger" onclick="hojaClaveNueva('reiniciar')">Crear clave nueva</button>
+    <button class="btn sec" onclick="hojaClave()">Volver</button></div>`);
+}
+function hojaUnir(){
+  abrirSheet(`
+    <h3>Este dispositivo ya tiene datos</h3>
+    <p class="sub">¿Qué hacemos con lo que hay acá?</p>
+    <div class="actions">
+      <button class="btn" onclick="terminarVinculo('unir')">Sumarlos a mi cuenta</button>
+      <p class="s" style="margin:0 2px 8px">Se juntan los dos sin duplicar.</p>
+      <button class="btn sec" onclick="terminarVinculo('cuenta')">Usar solo los de mi cuenta</button>
+      <p class="s" style="margin:0 2px">Lo de este dispositivo se reemplaza por lo de tu cuenta.</p>
+    </div>`);
+}
+function terminarVinculo(modo){
+  if(!remotoPendiente || !nubeUsuario) return;
+  const {datos, rev} = remotoPendiente; remotoPendiente = null;
+  const unido = modo==='unir' ? unir3(undefined, datos, emparejarBilleteras(paraNube(state), datos)) : datos;
+  nube = {uid:nubeUsuario.uid, email:nubeUsuario.email, rev, base:datos, sinc:Date.now()}; guardarNube();
+  nubeEstado = 'ok';
+  cerrarSheet();
+  ponerEstadoDeNube(unido);
+  vista = 'inicio'; render();
+  toast(modo==='unir' ? '¡Listo! Se juntaron tus datos' : '¡Listo! Ya tenés tus datos');
+  if(!igual(unido, datos)) sincronizar();   // sube lo que sumaste
+}
+function hojaSalir(){
+  abrirSheet(`
+    <h3>Cerrar sesión</h3>
+    <p class="sub">Tus datos siguen guardados y cifrados en tu cuenta.</p>
+    <div class="actions">
+      <button class="btn sec" onclick="nubeSalir(false)">Cerrar sesión y dejar los datos acá</button>
+      <button class="btn danger" onclick="nubeSalir(true)">Cerrar sesión y borrar los datos de este dispositivo</button>
+      <p class="s" style="margin:0 2px">Usá la segunda si este celu o esta compu no son tuyos.</p>
+    </div>`);
+}
+async function nubeSalir(borrarLocal, sinSubir=false){
+  const pendiente = !sinSubir && nube && nubeClave && !igual(paraNube(state), nube.base);
+  if(pendiente) await sincronizar();
+  if(!sinSubir && nube && nubeClave && !igual(paraNube(state), nube.base) && borrarLocal
+     && !confirm('Hay cambios que todavía no se subieron (¿sin internet?). Si borrás los datos de este dispositivo, se pierden. ¿Seguimos?')) return;
+  const u = nubeUsuario;
+  try{ if(FB && fbAuth) await FB.signOut(fbAuth); }catch(e){}
+  if(u) await guardarLlave(u.uid, null);
+  clearTimeout(nubeTimer); nubeTimer = null;
+  nube = null; guardarNube(); nubeClave = null; nubeUsuario = null; nubeEstado = 'fuera';
+  cerrarSheet();
+  if(borrarLocal){ state = estadoVacio(); save(); vista = 'inicio'; }
+  render(); toast('Sesión cerrada');
+}
+async function borrarNube(){
+  if(!confirm('Se borran tus datos de la nube y se cierra la sesión.\nEn este dispositivo siguen estando.\n¿Seguimos?')) return;
+  try{ await FB.deleteDoc(docNube()); }catch(e){ manejarErrorNube(e, true); return; }
+  await nubeSalir(false, true);
+  toast('Se borraron tus datos de la nube');
+}
+
+// ----- Sincronizar -----
+function nubeProgramar(ms=2500){
+  if(!nube || !nubeClave || aplicandoNube) return;
+  if(igual(paraNube(state), nube.base)) return;      // no hay nada nuevo para subir
+  clearTimeout(nubeTimer);
+  nubeTimer = setTimeout(()=>{ nubeTimer = null; sincronizar(); }, ms);
+}
+async function sincronizar(avisar=false){
+  if(!nube || !nubeUsuario || !nubeClave || !FB) return;
+  if(!navigator.onLine){ nubeEstado = 'sin-internet'; refrescarNubeUI(); if(avisar) toast('Sin internet: se sube cuando vuelva'); return; }
+  if(nubeCorriendo){ nubeOtraVez = true; return; }
+  nubeCorriendo = true; clearTimeout(nubeTimer); nubeTimer = null;
+  const estadoAntes = nubeEstado;
+  try{
+    const local = paraNube(state), base = nube.base, revBase = nube.rev, cuenta = nubeUsuario.uid;
+    let res = null;
+    await FB.runTransaction(fbDb, async tx=>{
+      const snap = await tx.get(docNube());
+      if(!snap.exists()) throw errorNube('sin-doc');
+      const d = leerDoc(snap.data());
+      if(!mismosBytes(d.salt, nubeClave.salt)) throw errorNube('clave-cambiada');
+      if(d.rev===revBase){
+        if(igual(local, base)){ res = {unido:base, rev:d.rev}; return; }  // nada cambió en ningún lado
+        tx.set(docNube(), await paqueteNube(local, d.rev+1));
+        res = {unido:local, rev:d.rev+1}; return;
+      }
+      const remoto = await descifrar(nubeClave.key, d, cuenta);
+      const unido = unir3(base, local, remoto);
+      let rev = d.rev;
+      if(!igual(unido, remoto)){ rev = d.rev+1; tx.set(docNube(), await paqueteNube(unido, rev)); }
+      res = {unido, rev};
+    });
+    if(!nube || nube.uid!==cuenta) return;   // cerraste sesión mientras tanto
+    nube.rev = res.rev; nube.base = res.unido; nube.sinc = Date.now(); guardarNube();
+    nubeEstado = 'ok';
+    traerCambios(local, res.unido);
+    if(avisar) toast('Sincronizado');
+  }catch(e){ manejarErrorNube(e, avisar); }
+  finally{
+    nubeCorriendo = false;
+    if(estadoAntes!==nubeEstado || avisar) refrescarNubeUI();
+    if(nubeOtraVez){ nubeOtraVez = false; nubeProgramar(300); }
+  }
+}
+// Pone en la app lo que vino de la nube (sin pisar lo que hayas cargado mientras sincronizaba)
+function traerCambios(antes, unido){
+  const ahora = paraNube(state);
+  const final = igual(ahora, antes) ? unido : unir3(antes, ahora, unido);
+  if(!igual(final, ahora)) ponerEstadoDeNube(final, true);
+  if(!igual(final, unido)) nubeOtraVez = true;   // quedó algo tuyo por subir
+}
+function ponerEstadoDeNube(datos, suave=false){
+  const habiaUsuario = !!state.usuario, dolarAntes = state.dolar.valor, usdtAntes = state.usdt.valor;
+  state = desdeNube(datos, state);
+  aplicandoNube = true; save(); aplicandoNube = false;
+  aplicarTema();
+  if(suave && habiaUsuario && state.usuario) renderSuave(); else if(!document.body.dataset.bloqueado) render();
+  if(state.usuario){
+    if(state.dolar.valor==null || state.dolar.valor!==dolarAntes) actualizarDolar();
+    if(state.usdt.valor==null || state.usdt.valor!==usdtAntes) actualizarUSDT();
+  }
+  nubeProgramar(300);
+}
+function manejarErrorNube(e, avisar=false){
+  const c = e && e.code || '';
+  if(c==='sin-doc'){
+    // Borraron los datos de la nube desde otro dispositivo: acá quedan, y se cierra la sesión
+    nubeSalir(false, true); toast('Tus datos de la nube se borraron desde otro dispositivo'); return;
+  }
+  if(c==='clave-cambiada'){
+    if(nubeUsuario) guardarLlave(nubeUsuario.uid, null);
+    nubeClave = null; nubeEstado = 'falta-clave'; refrescarNubeUI();
+    toast('Cambiaste la clave en otro dispositivo: escribila acá también'); return;
+  }
+  if(c==='unavailable' || c==='auth/network-request-failed' || !navigator.onLine){ nubeEstado = nubeEstado==='sin-vincular' ? 'sin-vincular' : 'sin-internet'; if(avisar) toast('Sin conexión: probá de nuevo'); return; }
+  console.warn('Nube:', e);
+  if(nubeEstado!=='sin-vincular') nubeEstado = 'error';
+  if(avisar) toast(c==='permission-denied' ? 'Firebase no dejó guardar (permisos)' : 'No se pudo sincronizar');
+}
+// Revisa si hay cambios de tus otros dispositivos: al abrir la app, al volver a ella y cada minuto
+setInterval(()=>{ if(document.visibilityState==='visible' && navigator.onLine) sincronizar(); }, 60000);
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState==='visible') sincronizar();
+  else if(nubeTimer){ sincronizar(); }       // te vas de la app: sube ya lo pendiente
+});
+window.addEventListener('online', ()=>{ if(nube && !FB) iniciarNube(); else sincronizar(); });
+
+// ----- Lo que se ve -----
+function refrescarNubeUI(){
+  if(document.body.dataset.bloqueado) return;
+  if(!state.usuario){
+    const n = $('#wNombre')?.value; renderBienvenida(); if(n) $('#wNombre').value = n;
+  }else if(vista==='ajustes') renderSuave();
+}
+function haceCuanto(ts){
+  const s = Math.round((Date.now()-ts)/1000);
+  if(s<60) return 'recién';
+  if(s<3600) return `hace ${Math.round(s/60)} min`;
+  return new Date(ts).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+}
+function tarjetaNube(){
+  const correo = esc(nubeUsuario?.email || nube?.email || '');
+  if(!nube && !nubeUsuario){
+    if(nubeEstado==='cargando') return `<div class="card"><p class="s" style="margin:0">Conectando…</p></div>`;
+    return `<div class="card">
+      <p class="s" style="margin-top:0">Iniciá sesión para tener tus cuentas en el celu y en la compu.</p>
+      <p class="s">Se guardan cifradas con una clave que solo sabés vos: nadie más puede leerlas.</p>
+      <div class="actions" style="margin-top:10px"><button class="btn" onclick="hojaAvisoClave()">${ici('nube')} Iniciar sesión con Google</button></div>
+    </div>`;
+  }
+  const estados = {
+    'cargando':     'Conectando…',
+    'ok':           nube?.sinc ? `Sincronizado ${haceCuanto(nube.sinc)}` : 'Sincronizado',
+    'sin-internet': 'Sin internet: se sube cuando vuelva',
+    'error':        'No se pudo sincronizar',
+    'falta-clave':  'Falta escribir tu clave en este dispositivo',
+    'sin-vincular': 'Falta terminar de conectar',
+    'fuera':        'La sesión se cerró: volvé a entrar',
+  };
+  let boton = `<button class="btn sec" onclick="sincronizar(true)">${ici('actualizar')} Sincronizar ahora</button>`;
+  if(!nubeUsuario) boton = `<button class="btn" onclick="nubeEntrar()">${ici('nube')} Volver a iniciar sesión</button>`;
+  else if(nubeEstado==='falta-clave') boton = `<button class="btn" onclick="hojaClave()">${ici('candado')} Escribir mi clave</button>`;
+  else if(nubeEstado==='sin-vincular') boton = `<button class="btn" onclick="vincular()">Terminar de conectar</button>`;
+  return `<div class="card">
+    <div class="t">${correo || 'Tu cuenta'}</div>
+    <div class="s">${estados[nubeEstado]||''}</div>
+    <p class="s">${ici('candado')} Tus datos viajan y se guardan cifrados.</p>
+    <div class="actions" style="margin-top:10px">${boton}
+      ${nubeUsuario?`<button class="btn sec" onclick="hojaSalir()">Cerrar sesión</button>`:''}
+      ${nubeUsuario && nube?`<button class="btn danger" onclick="borrarNube()">Borrar mis datos de la nube</button>`:''}
+    </div>
+  </div>`;
 }
 
 // ---------- Utilidades ----------
@@ -834,7 +1308,9 @@ const ICONOS = {
   subir:'<path d="M12 15V4M7.8 8l4.2-4.2L16.2 8"/><path d="M4.5 19.8h15"/>',
   tilde:'<path d="M5 12.6l4.4 4.4L19 7.4"/>',
   chispa:'<path d="M12 3.5c.6 4.4 2.1 5.9 6.5 6.5-4.4.6-5.9 2.1-6.5 6.5-.6-4.4-2.1-5.9-6.5-6.5 4.4-.6 5.9-2.1 6.5-6.5z"/>',
-  actualizar:'<path d="M19.6 12.4a7.6 7.6 0 1 1-2.3-5.8"/><path d="M19.6 4.2v4.6H15"/>'
+  actualizar:'<path d="M19.6 12.4a7.6 7.6 0 1 1-2.3-5.8"/><path d="M19.6 4.2v4.6H15"/>',
+  nube:'<path d="M7 18.6h10.4a4.2 4.2 0 0 0 .5-8.4 6 6 0 0 0-11.6 1.7A3.4 3.4 0 0 0 7 18.6z"/>',
+  candado:'<rect x="5" y="10.4" width="14" height="10" rx="2.4"/><path d="M8.3 10.4V7.7a3.7 3.7 0 0 1 7.4 0v2.7"/><path class="ac" d="M12 14.3v2.4"/>'
 };
 function ic(nombre, clase=''){ return `<svg class="i ${clase}" viewBox="0 0 24 24" aria-hidden="true">${ICONOS[nombre]||ICONOS.otros}</svg>`; }
 // Ícono chiquito para poner dentro de un texto (títulos, botones, etiquetas)
@@ -1109,6 +1585,15 @@ function renderBienvenida(){
       <label style="text-align:left">Elegí tu avatar</label>
       <div class="emojis">${EMOJIS_AVATAR.map(e=>`<button class="${e===emojiElegido?'on':''}" onclick="elegirEmoji('${e}')">${e}</button>`).join('')}</div>
       <div class="actions"><button class="btn" onclick="crearUsuario()">Arrancar</button></div>
+      <div class="ya-cuenta">
+        ${nubeUsuario
+          ? `<p class="s">Conectado como ${esc(nubeUsuario.email||'')}</p>
+             ${nubeEstado==='cargando'?'<p class="s">Buscando tus datos…</p>'
+               : nubeEstado==='falta-clave'?`<button class="btn sec" onclick="hojaClave()">${ici('candado')} Escribir mi clave</button>`
+               : nubeEstado==='sin-vincular'?`<button class="btn sec" onclick="vincular()">Terminar de conectar</button>`:''}`
+          : `<p class="s">¿Ya la usás en otro dispositivo?</p>
+             <button class="btn sec" onclick="hojaAvisoClave()">${ici('nube')} Iniciar sesión con Google</button>`}
+      </div>
     </div>`;
 }
 function elegirEmoji(e){ const n=$('#wNombre')?.value; emojiElegido=e; renderBienvenida(); if(n) $('#wNombre').value=n; }
@@ -1645,6 +2130,9 @@ function vAjustes(){
       </div>
     </div>
 
+    <h2 class="con-ico">${ici('nube')} Celu y compu</h2>
+    ${tarjetaNube()}
+
     <h2 class="con-ico">${ici('auto')} Apariencia</h2>
     <div class="seg">
       ${[['auto',ici('auto')+' Auto'],['claro',ici('sol')+' Claro'],['oscuro',ici('luna')+' Oscuro']].map(([id,txt])=>
@@ -1678,7 +2166,7 @@ function vAjustes(){
 
     <h2 class="con-ico">${ici('bajar')} Respaldo</h2>
     <div class="card">
-      <p class="s" style="margin-top:0">Tus datos viven solo en este celular. Bajate un respaldo de vez en cuando por si cambiás de teléfono.</p>
+      <p class="s" style="margin-top:0">${nube?'Tus datos están en tu cuenta, cifrados. Igual podés bajarte un respaldo cuando quieras.':'Tus datos viven solo en este dispositivo. Bajate un respaldo de vez en cuando por si cambiás de teléfono.'}</p>
       <div class="actions" style="margin-top:10px">
         <button class="btn sec" onclick="exportar()">${ici('bajar')} Descargar respaldo</button>
         <button class="btn sec" onclick="$('#archivoImport').click()">${ici('subir')} Restaurar respaldo</button>
@@ -1745,7 +2233,7 @@ function importar(input){
   r.readAsText(f);
 }
 function borrarTodo(){
-  if(!confirm('¿Seguro? Se borra TODO y no se puede deshacer.')) return;
+  if(!confirm(nube ? '¿Seguro? Se borra TODO, también en tus otros dispositivos, y no se puede deshacer.' : '¿Seguro? Se borra TODO y no se puede deshacer.')) return;
   state=estadoVacio(); save(); vista='inicio'; render();
 }
 
@@ -2236,6 +2724,7 @@ window.addEventListener('scroll', ()=>{
   ultimoScroll = y;
 }, {passive:true});
 if(state.usuario){ actualizarDolar(); actualizarUSDT(); actualizarTasas(); }
+iniciarNube();   // si ya habías iniciado sesión, se conecta y sincroniza
 // Pedirle al navegador que no borre los datos
 try{ navigator.storage && navigator.storage.persist && navigator.storage.persist(); }catch(e){}
 // Modo offline: registra el service worker

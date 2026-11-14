@@ -1,4 +1,4 @@
-# Cuentas Claras: todo lo que tiene la app (versión 15.0)
+# Cuentas Claras: todo lo que tiene la app (versión 15.1)
 
 Este archivo resume la app completa para retomar el trabajo en un chat nuevo sin perder contexto.
 Si cambiás algo de la app, actualizá también este archivo.
@@ -17,7 +17,7 @@ Si cambiás algo de la app, actualizá también este archivo.
   - Para mostrar ideas sin tocar la app se usa una página de prueba privada (artifact de claude.ai) con datos de ejemplo, o videos o capturas.
   - Él elige el número de versión (por ejemplo 14.1, 14.1.01, 15.0).
 - **Cómo se publica:** se trabaja en una rama de Claude, se hace push, se abre un pull request a `main` y se une (merge). Después el dueño, en **GitHub Desktop**, toca *Fetch origin* y *Pull origin*. GitHub Pages publica en un par de minutos y la app del celu se recarga sola cuando detecta la versión nueva.
-- **Entorno en la nube:** «appfinanzas». Hosts permitidos: `impeccable.style`, `dolarapi.com`, `criptoya.com`, `api.argentinadatos.com` y `api.comparatasas.ar` (este último no funciona).
+- **Entorno en la nube:** «appfinanzas». Las páginas de Google/Firebase no están permitidas ahí: la nube se prueba con un Firebase de mentira. Hosts permitidos: `impeccable.style`, `dolarapi.com`, `criptoya.com`, `api.argentinadatos.com` y `api.comparatasas.ar` (este último no funciona).
 
 ## 2. Archivos
 
@@ -29,23 +29,25 @@ Si cambiás algo de la app, actualizá también este archivo.
 | `icons/` | Ícono del celu (sello con una moneda $), favicon.svg (cambia con el modo claro u oscuro) |
 | `fonts/` | Space Mono y Space Grotesk guardadas localmente (licencia OFL) |
 | `respaldo/version-13/` | Copia exacta de la versión 13 (diseño ticket original), con un LEEME que explica cómo volver |
+| `nube/firebase.js` | Pedacito de Firebase 13.1.0 (login con Google + base de datos liviana), guardado en el repo. `nube/LEEME.md` tiene cómo rearmarlo y las reglas de Firestore |
 | `docs/CONTEXTO.md` | Este archivo |
 | `.claude/` | Skill de diseño Impeccable (sin hooks). El motor (25 MB) está en `.gitignore` y se baja solo |
 | `.gitignore` | Excluye el motor de Impeccable y los respaldos de la app (`cuentas-claras-respaldo-*.json`, `finanzas-respaldo-*.json`) para que nunca se suban al repo público |
 
 ### Versionado (importante)
 Al publicar un cambio hay que subir el número en **tres lugares**:
-1. `sw.js`: `const VERSION = 'finanzas-v15.0'`
-2. `index.html`: `const VERSION_APP = '15.0'` (se ve en Ajustes, abajo de todo)
-3. Los `?v=15.0` de los íconos y del manifest (en `index.html` y en `manifest.webmanifest`)
+1. `sw.js`: `const VERSION = 'finanzas-v15.1'`
+2. `index.html`: `const VERSION_APP = '15.1'` (se ve en Ajustes, abajo de todo)
+3. Los `?v=15.1` de los íconos y del manifest (en `index.html` y en `manifest.webmanifest`)
 
 Si cambia `sw.js`, la app del celu detecta la versión nueva y se recarga sola. Si no cambia, el contenido nuevo igual se ve al cerrar y volver a abrir la app.
 
-Historial de versiones: …13 (ticket original) → 14 (Ticket renovado) → 14.1 (Atrasada, TNA automática, dólar en vivo, tabla de dólares) → 14.1.01 (La pagó otra persona, más tasas, efecto del dólar, arreglo de líneas rosas) → **15.0** (meses, dividir gastos, animaciones, color y red de tarjeta automáticos).
+Historial de versiones: …13 (ticket original) → 14 (Ticket renovado) → 14.1 (Atrasada, TNA automática, dólar en vivo, tabla de dólares) → 14.1.01 (La pagó otra persona, más tasas, efecto del dólar, arreglo de líneas rosas) → 15.0 (meses, dividir gastos, animaciones, color y red de tarjeta automáticos) → **15.1** (iniciar sesión con Google y sincronizar celu y compu, con los datos cifrados).
 
 ## 3. Datos
 
-- Se guardan **solo en el navegador de cada dispositivo** (`localStorage`, clave `finanzas-v1`). No hay servidor ni cuentas.
+- Se guardan en el navegador de cada dispositivo (`localStorage`, clave `finanzas-v1`).
+- **Opcional: iniciar sesión con Google** para tener lo mismo en el celu y la compu (ver «Nube» abajo). Sin sesión la app funciona igual que siempre.
 - Respaldo: Ajustes → «Descargar respaldo» (JSON) y «Restaurar respaldo».
 - Estructura de `state`:
   - `usuario` {nombre, emoji}
@@ -63,6 +65,20 @@ Historial de versiones: …13 (ticket original) → 14 (Ticket renovado) → 14.
   - `ultimoPagador`, `ultimosAmigos`: últimos nombres usados
   - `tema`: auto|claro|oscuro
 - Para registros viejos sin fecha de creación, la fecha se saca del `id`, que la tiene adentro.
+
+### Nube (sincronizar celu y compu) — desde la 15.1
+- **Firebase** (plan gratis Spark), proyecto `cuentas-claras-4238f`, cuenta de Google del dueño. Login con Google + Firestore (São Paulo).
+- **Cifrado de punta a punta:** cada persona crea una **clave** propia. Los datos se cifran en el dispositivo (AES-GCM 256; la clave se convierte con PBKDF2-SHA256, 600.000 vueltas) antes de subirse. En Firebase todo es ilegible: ni Google ni el dueño pueden leerlo.
+  - La llave queda guardada en el dispositivo (IndexedDB, sin poder sacarla), así la clave se escribe una vez por dispositivo.
+  - **Si alguien se olvida la clave, lo de la nube no se recupera.** «Me la olvidé» deja empezar de cero con lo del dispositivo.
+- Firestore: un documento por cuenta, `usuarios/{uid}`, con `{v, rev, salt, iv, datos (cifrado y comprimido), gz, actualizado}`. Las reglas (en `nube/LEEME.md`) dejan que cada cuenta toque solo el suyo.
+- **Cómo sincroniza:** a «tres puntas». Guarda en el dispositivo lo último sincronizado (`cc-nube` en localStorage: `{uid, email, rev, base, sinc}`) y junta los cambios de los dos lados por `id` (agregados, cambiados y borrados), sin duplicar. Sube a los 2,5 segundos de cada cambio, al salir de la app; y revisa la nube al abrir, al volver y cada minuto.
+- No se suben las cotizaciones del día (`dolares`, `dolarAyer`, `tasas`, ni el valor automático del dólar y del USDT): cada dispositivo las baja solo.
+- **Primera vez en un dispositivo:** si la cuenta no tiene datos, se crea la clave y se sube lo que hay. Si tiene, se pide la clave; si el dispositivo también tiene datos, se elige «Sumarlos a mi cuenta» (junta, y las billeteras con mismo nombre y moneda, como «Efectivo», se toman como la misma) o «Usar solo los de mi cuenta».
+- **Antes de iniciar sesión** aparece el aviso «Vas a necesitar una clave»: hay que recordarla para entrar desde otro dispositivo, sin ella no se puede, y si se olvida se pierde todo lo de la nube. Se repite al crear la clave.
+- **Ajustes → «Celu y compu»:** iniciar sesión, estado («Sincronizado hace…»), Sincronizar ahora, Cerrar sesión (dejando o borrando los datos del dispositivo) y Borrar mis datos de la nube. En la bienvenida: «¿Ya la usás en otro dispositivo? Iniciar sesión con Google».
+- El login usa ventana emergente (popup); si el navegador la bloquea, usa redirección. **Falta probarlo en el iPhone con la app instalada.**
+- Funciones: `nubeEntrar`, `alCambiarCuenta`, `vincular`, `crearClave`, `probarClave`, `terminarVinculo`, `sincronizar`, `unir3`, `paraNube`, `desdeNube`, `cifrar`, `descifrar`, `nubeSalir`, `borrarNube`, `tarjetaNube`.
 
 ## 4. Servicios externos (APIs públicas, sin claves)
 
@@ -215,6 +231,5 @@ Lo que pusiste y lo que vale hoy, ganancia en $ y %, reparto por tipo (Plazo fij
 
 ## 8. Ideas pendientes (no hechas)
 
-- Sincronizar la misma cuenta en compu y celu (Firebase con login de Google).
 - PIN o Face ID para entrar.
 - Presupuesto por categoría, metas de ahorro, «¿Me alcanza?», avisos de vencimiento, gastos frecuentes, resumen del mes como ticket para compartir, comparar con la inflación, plazo fijo vs. billetera, respaldo automático.

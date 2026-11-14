@@ -1,6 +1,6 @@
 // Service worker: guarda la app en el celular para que funcione sin internet.
 // Cada vez que cambies algo de la app, subí este número (v1 -> v2) para que el celu baje la versión nueva.
-const VERSION = 'finanzas-v15.0';
+const VERSION = 'finanzas-v15.1';
 const ARCHIVOS = [
   './',
   './index.html',
@@ -13,6 +13,7 @@ const ARCHIVOS = [
   './fonts/SpaceMono-400.woff2',
   './fonts/SpaceMono-700.woff2',
   './fonts/SpaceGrotesk.woff2',
+  './nube/firebase.js',
 ];
 
 self.addEventListener('install', e => {
@@ -29,7 +30,7 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
-  // La cotización del dólar va siempre a internet (la app ya maneja si no hay conexión)
+  // La cotización del dólar y Firebase (login y datos cifrados) van siempre a internet, nunca se guardan acá
   if (url.origin !== location.origin) return;
   // Primero intenta internet (para tener lo último); si no hay, usa la copia guardada
   // cache:'no-cache' = preguntarle siempre a GitHub si hay algo nuevo (en vez de usar la copia del navegador)
