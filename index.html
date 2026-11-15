@@ -145,6 +145,8 @@
   .welcome .emoji{font-size:64px}
   .welcome .ya-cuenta{margin-top:26px;padding-top:16px;border-top:1.5px dashed var(--punteo)}
   .welcome .ya-cuenta .btn{width:100%}
+  .acciones-deuda{display:flex;gap:8px;margin-top:10px}
+  .acciones-deuda .btn{flex:1}
   .cuenta-google{display:flex;align-items:center;gap:12px}
   .cuenta-google .grow{min-width:0}
   .cuenta-google .correo{overflow-wrap:anywhere}
@@ -1937,8 +1939,8 @@ function vCuotas(){
   const lista = state.deudas.filter(d=>d.direccion===filtroDeuda);
   const activas = lista.filter(d=>d.cuotasPagadas<d.cuotasTotales);
   const terminadas = lista.filter(d=>d.cuotasPagadas>=d.cuotasTotales);
-  const restaARS = activas.filter(d=>d.moneda==='ARS').reduce((a,d)=>a+(d.cuotasTotales-d.cuotasPagadas)*d.montoCuota,0);
-  const restaUSD = activas.filter(d=>d.moneda==='USD').reduce((a,d)=>a+(d.cuotasTotales-d.cuotasPagadas)*d.montoCuota,0);
+  const restaARS = activas.filter(d=>d.moneda==='ARS').reduce((a,d)=>a+faltaDeuda(d),0);
+  const restaUSD = activas.filter(d=>d.moneda==='USD').reduce((a,d)=>a+faltaDeuda(d),0);
 
   const tarjeta = d => {
     const resta = d.cuotasTotales - d.cuotasPagadas;
@@ -1953,9 +1955,13 @@ function vCuotas(){
       </div>
       <div class="bar" style="margin-top:12px"><i style="width:${pct}%"></i></div>
       <div class="row" style="margin-top:8px">
-        <div><div class="s">${d.cuotasPagadas} de ${d.cuotasTotales} pagadas</div>${resta?`<div class="s">Faltan ${plata(resta*d.montoCuota,d.moneda)}</div>`:''}</div>
+        <div><div class="s">${d.cuotasPagadas} de ${d.cuotasTotales} pagadas</div>${d.aCuenta>0&&resta?`<div class="s">Te dio ${plata(d.aCuenta,d.moneda)} a cuenta</div>`:''}${resta?`<div class="s">Faltan ${plata(faltaDeuda(d),d.moneda)}</div>`:''}</div>
         ${resta ? `<button class="btn sm" onclick="pagarCuota('${d.id}')">${filtroDeuda==='debo'?'Pagar cuota':'Me pagó'}</button>` : `<span class="pill">${ici('tilde')}Terminada</span>`}
       </div>
+      ${resta && d.direccion==='medeben' ? `<div class="acciones-deuda">
+        <button class="btn sec sm" onclick="hojaParte('${d.id}')">Me dio una parte</button>
+        <button class="btn sec sm" onclick="loPagueYo('${d.id}')">Lo pagué yo</button>
+      </div>` : ''}
     </div>`;
   };
 
@@ -2070,11 +2076,12 @@ function pagarCuota(id){
   const debo = d.direccion==='debo';
   hojaPago({
     titulo: `${debo?'Pagar cuota':'Registrar cobro'} ${d.cuotasPagadas+1}/${d.cuotasTotales}`,
-    detalle: esc(d.descripcion), monto: d.montoCuota, moneda: d.moneda,
+    detalle: esc(d.descripcion)+(d.aCuenta>0?`<br>Ya te dio ${plata(d.aCuenta,d.moneda)} a cuenta`:''), monto: Math.round((d.montoCuota-(d.aCuenta||0))*100)/100, moneda: d.moneda,
     pregunta: debo ? '¿De qué billetera sale?' : '¿A qué billetera entra?',
     otraPersona: debo,
     alConfirmar: (b, monto, otra) => {
       d.cuotasPagadas = Math.min(d.cuotasTotales, d.cuotasPagadas+1);
+      d.aCuenta = 0;
       d.ultimoPago = mesActual();
       if(d.cuotasPagadas>=d.cuotasTotales) d.terminada = hoyISO(); // queda en el historial de terminadas
       if(!b){ // La pagó otra persona: no sale de ninguna billetera
@@ -2090,6 +2097,71 @@ function pagarCuota(id){
       selloPagado(!debo ? 'Cobrado' : d.cuotasPagadas>=d.cuotasTotales ? '¡Terminada!' : 'Pagado');
     }
   });
+}
+
+// Lo que falta pagar o cobrar: las cuotas que faltan, menos lo que ya te dieron a cuenta
+function faltaDeuda(d){ return Math.max(0, Math.round(((d.cuotasTotales-d.cuotasPagadas)*d.montoCuota - (d.aCuenta||0))*100)/100); }
+// «Me dio una parte»: te devolvió una parte de lo que te debe
+function hojaParte(id){
+  const d = state.deudas.find(x=>x.id===id); if(!d) return;
+  abrirSheet(`
+    <h3>Me dio una parte</h3>
+    <p class="sub">${esc(d.quien||'Te debe')} · ${esc(d.descripcion)}<br>Te debe ${plata(faltaDeuda(d),d.moneda)}.</p>
+    <label>¿Cuánto te dio?</label>
+    <input id="parteMonto" inputmode="decimal" placeholder="0" onkeydown="if(event.key==='Enter')seguirParte('${id}')">
+    <div class="actions"><button class="btn" onclick="seguirParte('${id}')">Seguir</button></div>`);
+  setTimeout(()=>$('#parteMonto')?.focus(), 250);
+}
+function seguirParte(id){
+  const d = state.deudas.find(x=>x.id===id); if(!d) return;
+  const falta = faltaDeuda(d), x = Math.round(num($('#parteMonto').value)*100)/100;
+  if(x<=0) return toast('Poné cuánto te dio');
+  if(x>falta+0.005) return toast(`Te debe ${plata(falta,d.moneda)}: poné hasta eso`);
+  hojaPago({
+    titulo: 'Me dio una parte', detalle: `${esc(d.quien||'')}${d.quien?' · ':''}${esc(d.descripcion)}`, monto: x, moneda: d.moneda,
+    pregunta: '¿A qué billetera entra?',
+    alConfirmar: (b, monto) => {
+      let resto = (d.aCuenta||0) + x;
+      while(d.cuotasPagadas < d.cuotasTotales && resto >= d.montoCuota-0.005){ resto -= d.montoCuota; d.cuotasPagadas++; }
+      const listo = d.cuotasPagadas >= d.cuotasTotales;
+      d.aCuenta = listo ? 0 : Math.round(resto*100)/100;
+      d.ultimoPago = mesActual();
+      if(listo) d.terminada = hoyISO();
+      const conv = b.moneda!==d.moneda ? ` · ${plata(x,d.moneda)}` : '';
+      state.movimientos.push({id:uid(), tipo:'ingreso', monto, billeteraId:b.id, categoria:'otros_i', fecha:hoyISO(),
+        nota:`${d.descripcion} (parte${d.quien?' de '+d.quien:''})${conv}`});
+      save(); cerrarSheet(); render(); selloPagado('Cobrado');
+      toast(listo ? '¡Ya te pagó todo!' : `Anotado · te falta cobrar ${plata(faltaDeuda(d),d.moneda)}`);
+    }
+  });
+}
+// «Lo pagué yo»: no te lo van a devolver, así que queda como gasto tuyo y sale de «Me deben»
+function loPagueYo(id){
+  const d = state.deudas.find(x=>x.id===id); if(!d) return;
+  abrirSheet(`
+    <h3>Lo pagué yo</h3>
+    <p class="sub">${esc(d.quien||'Esa persona')} no te va a devolver ${plata(faltaDeuda(d),d.moneda)}.<br>Corre por tu cuenta y se saca de «Me deben».</p>
+    <p class="conv">No se mueve plata de ninguna billetera.</p>
+    <div class="actions"><button class="btn" onclick="confirmarLoPagueYo('${id}')">Sí, lo pagué yo</button></div>`);
+}
+function confirmarLoPagueYo(id){
+  const d = state.deudas.find(x=>x.id===id); if(!d) return;
+  d.cuotasPagadas = d.cuotasTotales; d.aCuenta = 0; d.terminada = hoyISO(); d.loPagueYo = hoyISO();
+  save(); cerrarSheet(); render(); selloPagado('Pagado');
+  toast('Listo: corre por tu cuenta');
+}
+// Al eliminar algo que te deben: avisar que eliminar es para cuando te equivocaste
+function borrarDeuda(id){
+  const d = state.deudas.find(x=>x.id===id); if(!d) return;
+  if(d.direccion!=='medeben' || !faltaDeuda(d)) return borrar('deudas', id);
+  abrirSheet(`
+    <h3>¿Eliminarlo?</h3>
+    <p class="sub">Eliminalo solo si te equivocaste al cargarlo: es como si nunca te lo hubieran debido.</p>
+    <p class="conv">Si en realidad lo pagaste vos y no te lo van a devolver, no lo elimines: elegí <b>«Lo pagué yo»</b> y queda como gasto tuyo.</p>
+    <div class="actions">
+      <button class="btn" onclick="loPagueYo('${id}')">Lo pagué yo</button>
+      <button class="btn danger" onclick="state.deudas=state.deudas.filter(x=>x.id!=='${id}');save();cerrarSheet();render();toast('Eliminado')">Eliminar igual</button>
+    </div>`);
 }
 
 function pagarMensualidad(id){
@@ -2495,7 +2567,7 @@ function formDeuda(id){
     </div>
     <div class="actions">
       <button class="btn" onclick="guardarDeuda('${id||''}')">Guardar</button>
-      ${d?`<button class="btn danger" onclick="borrar('deudas','${id}')">Eliminar</button>`:''}
+      ${d?`<button class="btn danger" onclick="borrarDeuda('${id}')">Eliminar</button>`:''}
     </div>`);
   let pint=()=>{
     document.querySelectorAll('#dClase button').forEach(x=>x.classList.toggle('on',x.dataset.v===clase));
