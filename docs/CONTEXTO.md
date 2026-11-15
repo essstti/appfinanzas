@@ -157,6 +157,10 @@ Los dólares se pasan a pesos con el dólar de hoy.
   - Corregir «Ya pagadas» a mano cuenta como pago del mes.
 - **Pagar** (cuota o mensualidad): se elige la billetera de la que sale. Convierte la moneda con el dólar del día y registra el movimiento.
   - **«La pagó otra persona»:** no descuenta de ninguna billetera. Se pone quién la pagó (recuerda el último nombre) y si «Se lo tenés que devolver»; si sí, se anota en «Lo que debo» como deuda con esa persona.
+- **En «Me deben»**, cada deuda tiene además dos botones:
+  - **«Me dio una parte»:** se escribe cuánto te dio y a qué billetera entra (ingreso). Queda guardado en `aCuenta` («Te dio $ X a cuenta») y «Faltan» baja. Si con eso completa la cuota, cuenta como pagada. «Me pagó» después cobra solo lo que falta. Función `faltaDeuda(d)` = cuotas que faltan × monto − `aCuenta`.
+  - **«Lo pagué yo»:** no te lo van a devolver. Se cierra la deuda (`loPagueYo` con la fecha) sin mover plata: el gasto corre por tu cuenta.
+  - **Eliminar** algo que te deben muestra un aviso: es solo si te equivocaste al cargarlo (como si nunca te lo hubieran debido); si lo pagaste vos, conviene «Lo pagué yo». Botones «Lo pagué yo» y «Eliminar igual» (`borrarDeuda`).
 - **Terminadas:** no se listan en Cuotas (para no cargar la pantalla).
   - Hay un aviso corto «Terminaste de pagar N compras» que lleva al mes en Gastos.
   - La fecha de terminada se guarda al pagar la última cuota o al completarla a mano; las viejas toman la fecha del último pago.
